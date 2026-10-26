@@ -1,20 +1,12 @@
-# scrum_3BSCS-2
- 
-Welcome to the repository for our Scrum project. This document outlines our team structure, roles, and the branching rules we follow to keep our workflow clean and collaborative.
- 
----
- 
-## Team 
- 
-| Role | Name | GitHub Branch |
-|---|---|---|
-| Scrum Master | Gerodias, Joey | `feature/JoeyGerodiasJr` |
-| UI/UX Developer | Young, Matthew | `feature/Matthewyoung23` |
-| Backend Developer | Traqueña, Kenji | `feature/KenjiRay` |
-| DevSecOps Engineer | Aborde, Steven | `feature/StevenKeil` |
-| Test Engineer | Espiso, Hazel | `feature/HazelEspiso` |
- 
----
+# Gerodias PT
+
+| Tracker Role | Team Role Title | Name | Sprint PR Target | Total PR Target (4 Sprints) | Primary Responsibilities |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **Scrum Master (`SM`)** | Scrum Master | Gerodias, Joey | 5 | 20 | Agile sprint orchestration, velocity tracking, impediment management, project board automation |
+| **UI/UX Designer (`UIX`)** | UI/UX Developer | Young, Matthew | 5 | 20 | Frontend component architecture, design system standards, wireframes, mockups, layout accessibility (WCAG AA) |
+| **Developer (`DEV`)** | Backend / Full-Stack Developer | Aborde, Steven | 8 | 32 | Application scaffold, authentication, session security, module CRUD implementation, server-side permission enforcement |
+| **DB Admin (`DBA`)** | DevSecOps / Database Engineer | Traqueña, Kenji | 6 | 24 | Database migrations (`HopeDB_audit.sql`), relational integrity constraints, audit triggers, query tuning, CI/CD & environment configuration |
+| **Tester (`TST`)** | Test Engineer | Espiso, Hazel | 6 | 24 | Test plans, automated integration and regression test suites, permission matrix testing, defect verification, QA sign-off |
  
 ## Branching Rules
  
