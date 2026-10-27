@@ -1,0 +1,25 @@
+{
+  "name": "gerodias_pt",
+  "version": "1.0.0",
+  "description": "Welcome to the repository for our Scrum project. This document outlines our team structure, roles, and the branching rules we follow to keep our workflow clean and collaborative.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoeyGerodiasJr/Gerodias_PT.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/JoeyGerodiasJr/Gerodias_PT/issues"
+  },
+  "homepage": "https://github.com/JoeyGerodiasJr/Gerodias_PT#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "dotenv": "^18.0.9"
+  }
+}
