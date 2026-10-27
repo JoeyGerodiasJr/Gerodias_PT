@@ -4,11 +4,11 @@
 ## Database Setup (Supabase, no Docker)
 
 The database is managed with SQL migration files in `supabase/migrations/`.
-The **DB Admin (Traqueña, Kenji)** is the only person who applies migrations to the shared Supabase project.
+The **DB Admin (Traqueña, Kenji Ray)** is the only person who applies migrations to the shared Supabase project.
 
 ### Prerequisites
 - Git and VS Code
-- Supabase CLI (https://supabase.com/docs/guides/local-development/cli/getting-started)
+- Supabase CLI 
 - The database password, which you get from the DB Admin privately. **Never commit it or paste it in GitHub.**
 
 ### One-time setup
