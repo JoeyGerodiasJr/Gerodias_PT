@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create an account | Hope, Inc.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green-dark: #14622f;
+      --green: #17803f;
+      --green-light: #3f9a62;
+      --bg: #f4f8f5;
+      --ink: #12261a;
+      --muted: #4a5a50;
+      --border: #dbe6df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Public Sans', system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .page { display: grid; grid-template-columns: 45% 55%; min-height: 100vh; }
+
+    /* Left brand panel */
+    .brand {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 0 48px; color: #fff;
+      background:
+        radial-gradient(circle at 85% 90%, var(--green-light) 0, transparent 40%),
+        linear-gradient(160deg, var(--green-dark), var(--green));
+    }
+    .logo { display: flex; align-items: center; gap: 14px; }
+    .logo-mark {
+      display: grid; place-items: center; width: 42px; height: 42px;
+      background: #fff; color: var(--green);
+      border-radius: 8px; font-weight: 600; font-size: 20px;
+    }
+    .logo-name { font-size: 34px; font-weight: 600; }
+    .brand p { max-width: 340px; margin: 18px 0 0; font-size: 18px; line-height: 1.5; }
+
+    /* Right form panel */
+    .main {
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px 24px; background: var(--bg);
+    }
+    .card {
+      width: 100%; max-width: 415px; padding: 36px;
+      background: #fff; border: 1px solid var(--border); border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(20, 98, 47, 0.08);
+    }
+    h1 { margin: 0; font-size: 26px; font-weight: 600; }
+    .hint { margin: 8px 0 24px; color: var(--muted); font-size: 16px; }
+
+    label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
+    input {
+      width: 100%; height: 48px; margin-bottom: 20px; padding: 0 14px;
+      border: 1px solid var(--border); border-radius: 8px; font: inherit;
+    }
+    input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+
+    button {
+      width: 100%; height: 52px; margin-top: 4px;
+      background: var(--green); color: #fff; border: 0; border-radius: 8px;
+      font: inherit; font-weight: 500; cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: var(--green-dark); }
+    button:disabled { opacity: .7; cursor: not-allowed; }
+    button:focus-visible { outline: 2px solid var(--green-dark); outline-offset: 2px; }
+
+    .msg { margin: 0 0 16px; font-size: 14px; }
+    .msg:empty { display: none; }
+    .error { color: #b42318; }
+    .success { color: var(--green-dark); }
+
+    .login { margin: 24px 0 0; color: var(--muted); }
+    .login a { color: var(--green-dark); font-weight: 600; }
+
+    @media (max-width: 800px) {
+      .page { grid-template-columns: 1fr; }
+      .brand { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="brand">
+      <div class="logo">
+        <span class="logo-mark">G</span>
+        <span class="logo-name">Hope, Inc.</span>
+      </div>
+      <p>Create an account to get access to the company data.</p>
+    </aside>
+
+    <main class="main">
+      <form class="card" id="register-form" novalidate>
+        <h1>Create an account</h1>
+        <p class="hint">An admin will review your account before you get access.</p>
+
+        <label for="firstName">First name</label>
+        <input id="firstName" name="firstName" type="text" autocomplete="given-name" maxlength="49" required>
+
+        <label for="lastName">Last name</label>
+        <input id="lastName" name="lastName" type="text" autocomplete="family-name" maxlength="49" required>
+
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="50" required>
+
+        <p class="msg error" id="error" role="alert"></p>
+        <p class="msg success" id="success" role="status"></p>
+
+        <button type="submit" id="submit">Create account</button>
+
+        <p class="login">Already registered? <a href="/login">Log in</a></p>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById('register-form');
+    const errorEl = document.getElementById('error');
+    const successEl = document.getElementById('success');
+    const submitBtn = document.getElementById('submit');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+      successEl.textContent = '';
+
+      const firstName = form.firstName.value.trim();
+      const lastName = form.lastName.value.trim();
+      const email = form.email.value.trim();
+
+      // Same checks as src/routes/auth.js
+      if (!firstName || !lastName || !email) {
+        errorEl.textContent = 'Enter your first name, last name, and email.';
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errorEl.textContent = 'Enter a valid email address.';
+        return;
+      }
+      if (email.length > 50) {
+        errorEl.textContent = 'Email must be 50 characters or fewer.';
+        return;
+      }
+      if ((firstName + ' ' + lastName).length > 100) {
+        errorEl.textContent = 'Name is too long.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account…';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firstName, lastName, email })
+        });
+
+        // If the server sends back something that isn't JSON, show a clear message
+        let data = {};
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error('The server sent an unexpected response (status ' + res.status + '). Check the terminal running npm run dev.');
+        }
+
+        if (!res.ok) throw new Error(data.message || 'Something went wrong.');
+        successEl.textContent = data.message;
+        form.reset();
+      } catch (err) {
+        errorEl.textContent = err.message;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+      }
+    });
+  </script>
+</body>
+</html>
