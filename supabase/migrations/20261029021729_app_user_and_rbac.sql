@@ -62,69 +62,76 @@ CREATE INDEX IF NOT EXISTS idx_user_permission_right_id ON user_permission(right
 
 -- 3. Dedicated Child-Check Trigger Function for User Management
 CREATE OR REPLACE FUNCTION trg_check_children_um()
-RETURNS trigger AS $$
-DECLARE
-    v_count bigint;
-BEGIN
-    IF TG_TABLE_NAME = 'role' THEN
-        SELECT count(*) INTO v_count FROM app_user WHERE role_id = OLD.role_id AND NOT is_deleted;
-        IF v_count > 0 THEN
-            RAISE EXCEPTION 'Cannot delete role row: % active related record(s) still exist in app_user.', v_count;
-        END IF;
-    ELSIF TG_TABLE_NAME = 'module' THEN
-        SELECT count(*) INTO v_count FROM rights WHERE module_id = OLD.module_id AND NOT is_deleted;
-        IF v_count > 0 THEN
-            RAISE EXCEPTION 'Cannot delete module row: % active related record(s) still exist in rights.', v_count;
-        END IF;
-    ELSIF TG_TABLE_NAME = 'rights' THEN
-        SELECT count(*) INTO v_count FROM user_permission WHERE right_id = OLD.right_id AND NOT is_deleted;
-        IF v_count > 0 THEN
-            RAISE EXCEPTION 'Cannot delete rights row: % active related record(s) still exist in user_permission.', v_count;
-        END IF;
-    ELSIF TG_TABLE_NAME = 'app_user' THEN
-        SELECT count(*) INTO v_count FROM user_permission WHERE user_id = OLD.user_id AND NOT is_deleted;
-        IF v_count > 0 THEN
-            RAISE EXCEPTION 'Cannot delete app_user row: % active related record(s) still exist in user_permission.', v_count;
-        END IF;
+RETURNS trigger AS $$ 
+DECLARE 
+    v_count bigint := 0; 
+BEGIN 
+    -- Only check children when transitioning from active to soft-deleted
+    IF NOT (NEW.is_deleted AND NOT OLD.is_deleted) THEN 
+        RETURN NEW; 
     END IF;
-    RETURN NEW;
-END;
+
+    IF TG_TABLE_NAME = 'role' THEN 
+        SELECT count(*) INTO v_count FROM app_user WHERE role_id = OLD.role_id AND NOT is_deleted; 
+        IF v_count > 0 THEN 
+            RAISE EXCEPTION 'Cannot delete role row: % active related record(s) still exist in app_user.', v_count; 
+        END IF; 
+    ELSIF TG_TABLE_NAME = 'module' THEN 
+        SELECT count(*) INTO v_count FROM rights WHERE module_id = OLD.module_id AND NOT is_deleted; 
+        IF v_count > 0 THEN 
+            RAISE EXCEPTION 'Cannot delete module row: % active related record(s) still exist in rights.', v_count; 
+        END IF; 
+    ELSIF TG_TABLE_NAME = 'rights' THEN 
+        SELECT count(*) INTO v_count FROM user_permission WHERE right_id = OLD.right_id AND NOT is_deleted; 
+        IF v_count > 0 THEN 
+            RAISE EXCEPTION 'Cannot delete rights row: % active related record(s) still exist in user_permission.', v_count; 
+        END IF; 
+    ELSIF TG_TABLE_NAME = 'app_user' THEN 
+        SELECT count(*) INTO v_count FROM user_permission WHERE user_id = OLD.user_id AND NOT is_deleted; 
+        IF v_count > 0 THEN 
+            RAISE EXCEPTION 'Cannot delete app_user row: % active related record(s) still exist in user_permission.', v_count; 
+        END IF; 
+    END IF; 
+    RETURN NEW; 
+END; 
 $$ LANGUAGE plpgsql;
 
--- 4. Redacted Audit Log Trigger Function for app_user (Maps action to match DBA-02 audit rules)
+-- 4. Redacted Audit Log Trigger Function for app_user (Matches DBA-02 audit rules)
 CREATE OR REPLACE FUNCTION trg_audit_log_redacted()
-RETURNS trigger AS $$
-DECLARE
-    v_key jsonb;
-    v_old jsonb;
-    v_new jsonb;
-    v_user text;
-    v_action text;
-BEGIN
-    v_user := audit_user();
-    
-    -- Map TG_OP to match DBA-02 action vocabulary (ADD / EDIT / DELETE)
-    v_action := CASE TG_OP
-        WHEN 'INSERT' THEN 'ADD'
-        WHEN 'UPDATE' THEN 'EDIT'
-        WHEN 'DELETE' THEN 'DELETE'
-        ELSE TG_OP
-    END;
-    
-    IF TG_TABLE_NAME = 'app_user' THEN
-        v_key := jsonb_build_object('user_id', COALESCE(NEW.user_id, OLD.user_id));
-        v_old := CASE WHEN OLD IS NOT NULL THEN to_jsonb(OLD) - 'password_hash' ELSE NULL END;
-        v_new := CASE WHEN NEW IS NOT NULL THEN to_jsonb(NEW) - 'password_hash' ELSE NULL END;
+RETURNS trigger AS $$ 
+DECLARE 
+    v_key text; 
+    v_old jsonb; 
+    v_new jsonb; 
+    v_action text; 
+BEGIN 
+    v_key := COALESCE(NEW.user_id, OLD.user_id)::text; 
+    v_old := CASE WHEN OLD IS NOT NULL THEN to_jsonb(OLD) - 'password_hash' ELSE NULL END; 
+    v_new := CASE WHEN NEW IS NOT NULL THEN to_jsonb(NEW) - 'password_hash' ELSE NULL END;
+
+    IF TG_OP = 'INSERT' THEN 
+        INSERT INTO audit_log (table_name, action, record_key, old_values, new_values, action_by) 
+        VALUES (TG_TABLE_NAME, 'ADD', v_key, NULL, v_new, audit_user()); 
+    ELSE 
+        -- Ignore no-op updates
+        IF (to_jsonb(OLD) - 'stamp') = (to_jsonb(NEW) - 'stamp') THEN 
+            RETURN NULL; 
+        END IF;
+
+        v_action := CASE 
+            WHEN NOT OLD.is_deleted AND NEW.is_deleted THEN 'DELETE' 
+            WHEN OLD.is_deleted AND NOT NEW.is_deleted THEN 'RESTORE' 
+            ELSE 'EDIT' 
+        END;
+
+        INSERT INTO audit_log (table_name, action, record_key, old_values, new_values, action_by) 
+        VALUES (TG_TABLE_NAME, v_action, v_key, v_old, v_new, audit_user()); 
     END IF;
 
-    INSERT INTO audit_log (table_name, action, record_key, old_values, new_values, action_by)
-    VALUES (TG_TABLE_NAME, v_action, v_key, v_old, v_new, v_user);
-
-    RETURN NEW;
-END;
+    RETURN NULL; 
+END; 
 $$ LANGUAGE plpgsql;
 
--- 5. Attach Triggers & Create Active Views
 -- 5. Attach Triggers & Create Active Views
 
 -- --- ROLE ---
