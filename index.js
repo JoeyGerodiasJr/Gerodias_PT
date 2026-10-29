@@ -1,7 +1,12 @@
+const express = require("express");
 const supabase = require("./src/config/supabaseClient");
 
+const app = express();
+app.use(express.json());
+app.use(express.static("public"));
+app.use("/api/auth", require("./src/routes/auth"));
+
 async function verifyConnection() {
-  // Replace "test" with any real table name in your database
   const { error } = await supabase.from("test").select("*").limit(1);
 
   // PGRST205 = API reached, but that table doesn't exist (still proves the connection works)
@@ -13,4 +18,12 @@ async function verifyConnection() {
   }
 }
 
-verifyConnection();
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+const PORT = process.env.PORT || 3000;
+
+verifyConnection().then(() => {
+  app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+});
