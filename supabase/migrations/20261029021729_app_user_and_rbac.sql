@@ -173,3 +173,19 @@ CREATE TRIGGER user_permission_biu_stamp BEFORE INSERT OR UPDATE ON user_permiss
 CREATE TRIGGER user_permission_bu_check BEFORE UPDATE ON user_permission FOR EACH ROW EXECUTE FUNCTION trg_check_children_um();
 CREATE TRIGGER user_permission_aiu_audit AFTER INSERT OR UPDATE ON user_permission FOR EACH ROW EXECUTE FUNCTION trg_audit_log('permission_id');
 CREATE OR REPLACE VIEW user_permission_active WITH (security_invoker = true) AS SELECT * FROM user_permission WHERE NOT is_deleted;
+
+-- Migration: Add status column to app_user (Additive Patch)
+-- Description: Adds status ('pending', 'active', 'rejected') to app_user and updates active view.
+
+-- 1. Add status column with check constraint and default 'active' 
+-- (so existing seeded superadmins/users default to active seamlessly)
+ALTER TABLE public.app_user 
+    ADD COLUMN IF NOT EXISTS status VARCHAR(10) NOT NULL DEFAULT 'active'
+    CHECK (status IN ('pending', 'active', 'rejected'));
+
+-- 2. Index for performance on status queries
+CREATE INDEX IF NOT EXISTS idx_app_user_status ON public.app_user(status);
+
+-- 3. Recreate the active view to ensure `status` is cleanly exposed
+CREATE OR REPLACE VIEW app_user_active WITH (security_invoker = true) AS 
+SELECT * FROM app_user WHERE NOT is_deleted;
