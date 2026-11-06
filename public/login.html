@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in - Gerodias PT.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green-dark: #14622f;
+      --green: #17803f;
+      --green-light: #3f9a62;
+      --bg: #f4f8f5;
+      --ink: #12261a;
+      --muted: #4a5a50;
+      --border: #dbe6df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Public Sans', system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .page { display: grid; grid-template-columns: 45% 55%; min-height: 100vh; }
+
+    /* Left brand panel */
+    .brand {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 0 48px; color: #fff;
+      background:
+        radial-gradient(circle at 85% 90%, var(--green-light) 0, transparent 40%),
+        linear-gradient(160deg, var(--green-dark), var(--green));
+    }
+    .logo { display: flex; align-items: center; gap: 14px; }
+    .logo-mark {
+      display: grid; place-items: center; width: 42px; height: 42px;
+      background: #fff; color: var(--green);
+      border-radius: 8px; font-weight: 600; font-size: 20px;
+    }
+    .logo-name { font-size: 34px; font-weight: 600; }
+    .brand p { max-width: 340px; margin: 18px 0 0; font-size: 18px; line-height: 1.5; }
+
+    /* Right form panel */
+    .main {
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px 24px; background: var(--bg);
+    }
+    .card {
+      width: 100%; max-width: 415px; padding: 36px;
+      background: #fff; border: 1px solid var(--border); border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(20, 98, 47, 0.08);
+    }
+    h1, h2 { margin: 0; font-size: 26px; font-weight: 600; }
+    .hint { margin: 8px 0 24px; color: var(--muted); font-size: 16px; }
+
+    label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
+    input {
+      width: 100%; height: 48px; margin-bottom: 20px; padding: 0 14px;
+      border: 1px solid var(--border); border-radius: 8px; font: inherit;
+    }
+    input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+
+    button {
+      width: 100%; height: 52px; margin-top: 4px;
+      background: var(--green); color: #fff; border: 0; border-radius: 8px;
+      font: inherit; font-weight: 500; cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: var(--green-dark); }
+    button:disabled { opacity: .7; cursor: not-allowed; }
+    button:focus-visible { outline: 2px solid var(--green-dark); outline-offset: 2px; }
+
+    .msg { margin: 0 0 16px; font-size: 14px; }
+    .msg:empty { display: none; }
+    .error { color: #b42318; }
+    .success { color: var(--green-dark); }
+
+    .hidden { display: none !important; }
+
+    .footer-links {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 24px; font-size: 14px;
+    }
+    .footer-links a { color: var(--green-dark); font-weight: 600; text-decoration: underline; }
+
+    @media (max-width: 800px) {
+      .page { grid-template-columns: 1fr; }
+      .brand { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="brand">
+      <div class="logo">
+        <span class="logo-mark">G</span>
+        <span class="logo-name">Gerodias PT.</span>
+      </div>
+      <p>Sign in to see employees, customers, sales, and payments.</p>
+    </aside>
+
+    <main class="main">
+      <div class="card">
+        
+        <!-- Standard Login Section -->
+        <div id="loginSection">
+          <h1>Log in</h1>
+          <p class="hint">Use the email and password you registered with.</p>
+
+          <form id="loginForm" novalidate>
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required>
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+            <p class="msg error" id="loginError" role="alert"></p>
+            <p class="msg success" id="loginSuccess" role="status"></p>
+
+            <button type="submit" id="loginSubmit">Log in</button>
+          </form>
+
+          <div class="footer-links">
+            <a href="/">Create an account</a>
+            <a href="#" id="forgotPasswordBtn">Forgot password?</a>
+          </div>
+        </div>
+
+        <!-- First-Time Set Password Section -->
+        <div id="setPasswordSection" class="hidden">
+          <h2>Set First-Time Password</h2>
+          <p class="hint">This is your first login. Please create a password for your account.</p>
+
+          <form id="setPasswordForm" novalidate>
+            <input type="hidden" id="setPassEmail" />
+
+            <label for="newPassword">New Password</label>
+            <input id="newPassword" name="newPassword" type="password" minlength="8" required>
+
+            <label for="confirmNewPassword">Confirm New Password</label>
+            <input id="confirmNewPassword" name="confirmNewPassword" type="password" minlength="8" required>
+
+            <p class="msg error" id="setPassError" role="alert"></p>
+            <p class="msg success" id="setPassSuccess" role="status"></p>
+
+            <button type="submit" id="setPassSubmit">Save Password & Log in</button>
+          </form>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const loginSuccess = document.getElementById('loginSuccess');
+    const loginSubmit = document.getElementById('loginSubmit');
+    const loginSection = document.getElementById('loginSection');
+
+    const setPasswordSection = document.getElementById('setPasswordSection');
+    const setPasswordForm = document.getElementById('setPasswordForm');
+    const setPassError = document.getElementById('setPassError');
+    const setPassSuccess = document.getElementById('setPassSuccess');
+    const setPassSubmit = document.getElementById('setPassSubmit');
+
+    // Handle Login Submit
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginError.textContent = '';
+      loginSuccess.textContent = '';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        loginError.textContent = 'Please enter your email and password.';
+        return;
+      }
+
+      loginSubmit.disabled = true;
+      loginSubmit.textContent = 'Logging in…';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          loginSuccess.textContent = 'Login successful! Redirecting...';
+          setTimeout(() => { window.location.href = '/'; }, 1000);
+        } else if (data.code === 'REQUIRE_SET_PASSWORD') {
+          document.getElementById('setPassEmail').value = email;
+          loginSection.classList.add('hidden');
+          setPasswordSection.classList.remove('hidden');
+        } else {
+          loginError.textContent = data.message || 'Login failed.';
+        }
+      } catch (err) {
+        console.error(err);
+        loginError.textContent = 'Network error. Please try again.';
+      } finally {
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = 'Log in';
+      }
+    });
+
+    // Handle Set Password Submit
+    setPasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setPassError.textContent = '';
+      setPassSuccess.textContent = '';
+
+      const email = document.getElementById('setPassEmail').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+      if (newPassword.length < 8) {
+        setPassError.textContent = 'Password must be at least 8 characters long.';
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        setPassError.textContent = 'Passwords do not match.';
+        return;
+      }
+
+      setPassSubmit.disabled = true;
+      setPassSubmit.textContent = 'Saving password…';
+
+      try {
+        const res = await fetch('/api/auth/set-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, newPassword })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setPassSuccess.textContent = 'Password set successfully! Returning to login...';
+          setTimeout(() => {
+            setPasswordSection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            loginError.textContent = '';
+            loginSuccess.textContent = '';
+          }, 1500);
+        } else {
+          setPassError.textContent = data.message || 'Failed to set password.';
+        }
+      } catch (err) {
+        console.error(err);
+        setPassError.textContent = 'Network error. Please try again.';
+      } finally {
+        setPassSubmit.disabled = false;
+        setPassSubmit.textContent = 'Save Password & Log in';
+      }
+    });
+
+    // Forgot password alert handler
+    document.getElementById('forgotPasswordBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('Please contact your system administrator to reset your password.');
+    });
+  </script>
+</body>
+</html>

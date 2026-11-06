@@ -1,6 +1,8 @@
 const express = require("express");
 const path = require("path");
 const supabase = require("./src/config/supabaseClient");
+const session = require("express-session");
+const bcrypt = require("bcrypt");
 
 const app = express();
 
@@ -15,9 +17,26 @@ app.use((req, res, next) => {
 // Serve static frontend files from 'public'
 app.use(express.static(path.join(__dirname, "public")));
 
-// Serve index.html on root
+app.use(session({
+  secret: process.env.SESSION_SECRET || "default-secret",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, httpOnly: true, maxAge: 1000 * 60 * 60 * 24 } // 1 day
+}));
+
+// Serve register.html on root
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "register.html"));
+});
+
+//Serve login.html on /login
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+// Serve Set Password Page
+app.get("/setPassword", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "setPassword.html"));
 });
 
 // Registration Endpoint
@@ -62,6 +81,41 @@ app.post("/api/auth/register", async (req, res) => {
 
   res.status(201).json({ message: "Registration received. Your account is pending approval." });
 });
+
+async function verifyConnection() {
+  console.log("Checking connection...");
+  const { error } = await supabase.from("test").select("*").limit(1);
+
+  if (!error || error.code === "PGRST205") {
+    console.log("Supabase connection OK");
+  } else {
+    console.error("Connection failed:", error.message);
+    process.exit(1);
+  }
+}
+
+// Logout Endpoint
+app.post("/api/auth/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ message: "Could not log out." });
+    }
+    res.clearCookie("connect.sid");
+    res.status(200).json({ message: "Logged out successfully." });
+  });
+});
+
+// Session Verification Endpoint
+app.get("/api/auth/me", (req, res) => {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  res.json({ user: req.session.user });
+});
+
+// ==========================================
+// 3. SERVER INITIALIZATION
+// ==========================================
 
 async function verifyConnection() {
   console.log("Checking connection...");

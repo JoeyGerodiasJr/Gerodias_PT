@@ -22,8 +22,10 @@
   "homepage": "https://github.com/JoeyGerodiasJr/Gerodias_PT#readme",
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
+    "bcrypt": "^6.0.0",
     "dotenv": "^18.0.9",
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "express-session": "^1.19.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
