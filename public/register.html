@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Create an account | Hope, Inc.</title>
+  <title>Create an account - Gerodias PT.</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -52,7 +52,7 @@
       background: #fff; border: 1px solid var(--border); border-radius: 16px;
       box-shadow: 0 4px 20px rgba(20, 98, 47, 0.08);
     }
-    h1 { margin: 0; font-size: 26px; font-weight: 600; }
+    h1, h2 { margin: 0; font-size: 26px; font-weight: 600; }
     .hint { margin: 8px 0 24px; color: var(--muted); font-size: 16px; }
 
     label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
@@ -76,7 +76,7 @@
     .error { color: #b42318; }
     .success { color: var(--green-dark); }
 
-    .login { margin: 24px 0 0; color: var(--muted); }
+    .login { margin: 24px 0 0; color: var(--muted); font-size: 14px; }
     .login a { color: var(--green-dark); font-weight: 600; }
 
     @media (max-width: 800px) {
@@ -90,7 +90,7 @@
     <aside class="brand">
       <div class="logo">
         <span class="logo-mark">G</span>
-        <span class="logo-name">Hope, Inc.</span>
+        <span class="logo-name">Gerodias PT.</span>
       </div>
       <p>Create an account to get access to the company data.</p>
     </aside>
@@ -134,7 +134,6 @@
       const lastName = form.lastName.value.trim();
       const email = form.email.value.trim();
 
-      // Same checks as src/routes/auth.js
       if (!firstName || !lastName || !email) {
         errorEl.textContent = 'Enter your first name, last name, and email.';
         return;
@@ -162,7 +161,6 @@
           body: JSON.stringify({ firstName, lastName, email })
         });
 
-        // If the server sends back something that isn't JSON, show a clear message
         let data = {};
         try {
           data = await res.json();
