@@ -145,8 +145,8 @@
 
             <label for="password">Password</label>
             <div class="input-group">
-              <input id="password" name="password" type="password" autocomplete="current-password" required>
-              <button type="button" class="toggle-btn" onclick="toggleVisibility('password', this)">Show</button>
+              <input type="password" id="password" required>
+              <button type="button" class="toggle-btn" data-target="password">Show</button>
             </div>
 
             <p class="msg error" id="loginError" role="alert"></p>
@@ -156,180 +156,82 @@
           </form>
 
           <div class="footer-links">
-            <a href="/register">Create an account</a>
+            <a href="/">Create an account</a>
             <a href="/forgotPassword" class="forgot-link">Forgot password?</a>
           </div>
         </div>
-
-        <!-- First-Time Set Password Section -->
-        <div id="setPasswordSection" class="hidden">
-          <h2>Set First-Time Password</h2>
-          <p class="hint">This is your first login. Please create a password for your account.</p>
-
-          <form id="setPasswordForm" novalidate>
-            <input type="hidden" id="setPassEmail" />
-
-            <label for="newPassword">New Password</label>
-            <div class="input-group">
-              <input id="newPassword" name="newPassword" type="password" autocomplete="new-password" minlength="8" required>
-              <button type="button" class="toggle-btn" onclick="toggleVisibility('newPassword', this)">Show</button>
-            </div>
-
-            <label for="confirmNewPassword">Confirm New Password</label>
-            <div class="input-group">
-              <input id="confirmNewPassword" name="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required>
-              <button type="button" class="toggle-btn" onclick="toggleVisibility('confirmNewPassword', this)">Show</button>
-            </div>
-
-            <p class="msg error" id="setPassError" role="alert"></p>
-            <p class="msg success" id="setPassSuccess" role="status"></p>
-
-            <button type="submit" id="setPassSubmit">Save Password & Log in</button>
-          </form>
-        </div>
-
-      </div>
-    </main>
-  </div>
-
   <script>
-    const loginForm = document.getElementById('loginForm');
-    const loginError = document.getElementById('loginError');
-    const loginSuccess = document.getElementById('loginSuccess');
-    const loginSubmit = document.getElementById('loginSubmit');
-    const loginSection = document.getElementById('loginSection');
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+      
+        const targetId = this.getAttribute('data-target');
+        const input = document.getElementById(targetId);
 
-    const setPasswordSection = document.getElementById('setPasswordSection');
-    const setPasswordForm = document.getElementById('setPasswordForm');
-    const setPassError = document.getElementById('setPassError');
-    const setPassSuccess = document.getElementById('setPassSuccess');
-    const setPassSubmit = document.getElementById('setPassSubmit');
+        if (input) {
+          if (input.type === 'password') {
+            input.type = 'text';
+            this.textContent = 'Hide';
+          } else {
+            input.type = 'password';
+            this.textContent = 'Show';
+          }
+        }
+      });
+    });
 
-    function toggleVisibility(inputId, btn) {
-      const input = document.getElementById(inputId);
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = 'Hide';
-      } else {
-        input.type = 'password';
-        btn.textContent = 'Show';
-      }
-    }
+    const form = document.querySelector('form');
+    const errorEl = document.querySelector('.msg.error') || document.getElementById('error');
+    const submitBtn = document.querySelector('button[type="submit"]');
 
-    // Handle Login Submit
-    loginForm.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      loginError.textContent = '';
-      loginSuccess.textContent = '';
+      if (errorEl) errorEl.innerHTML = '';
 
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
 
       if (!email || !password) {
-        loginError.textContent = 'Please enter your email and password.';
+        if (errorEl) errorEl.textContent = 'Please enter both email and password.';
         return;
       }
 
-      loginSubmit.disabled = true;
-      loginSubmit.textContent = 'Logging in…';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in…';
 
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
-        });
+      });
 
-        let data = {};
-        try {
-          data = await res.json();
-        } catch {
-          throw new Error('Server returned an unexpected response. Please ensure backend node index.js is running.');
-        }
+      const data = await res.json().catch(() => ({}));
 
-        // 1. First Check: Require Password Set for First-Time Users
-        if (data.code === 'REQUIRE_SET_PASSWORD') {
-          document.getElementById('setPassEmail').value = email;
-          loginSection.classList.add('hidden');
-          setPasswordSection.classList.remove('hidden');
+      if (!res.ok) {
+        // Handle initial password setup requirement
+        if (data.requireSetPassword) {
+          const setPasswordUrl = `/setPassword?email=${encodeURIComponent(email)}`;
+        
+          if (errorEl) {
+            errorEl.innerHTML = `Password setup required. <a href="${setPasswordUrl}" style="color: inherit; font-weight: bold; text-decoration: underline;">Click here to set your password</a>.`;
+          }
           return;
         }
-
-        // 2. Standard Success
-        if (res.ok) {
-          loginSuccess.textContent = 'Login successful! Redirecting...';
-          setTimeout(() => { window.location.href = '/'; }, 1000);
-          return;
-        }
-
-        // 3. Error Case (Invalid Credentials, Blocked Account, etc.)
-        loginError.textContent = data.message || 'Login failed.';
-
-      } catch (err) {
-        console.error(err);
-        loginError.textContent = err.message || 'Network error. Please try again.';
-      } finally {
-        loginSubmit.disabled = false;
-        loginSubmit.textContent = 'Log in';
-      }
-    });
-
-    // Handle Set Password Submit
-    setPasswordForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      setPassError.textContent = '';
-      setPassSuccess.textContent = '';
-
-      const email = document.getElementById('setPassEmail').value;
-      const newPassword = document.getElementById('newPassword').value;
-      const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-
-      if (newPassword.length < 8) {
-        setPassError.textContent = 'Password must be at least 8 characters long.';
-        return;
+        throw new Error(data.message || 'Login failed.');
       }
 
-      if (newPassword !== confirmNewPassword) {
-        setPassError.textContent = 'Passwords do not match.';
-        return;
-      }
+      // Login successful
+      window.location.href = '/dashboard';
 
-      setPassSubmit.disabled = true;
-      setPassSubmit.textContent = 'Saving password…';
-
-      try {
-        const res = await fetch('/api/auth/set-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, newPassword })
-        });
-
-        let data = {};
-        try {
-          data = await res.json();
-        } catch {
-          throw new Error('Server error while setting password.');
-        }
-
-        if (res.ok) {
-          setPassSuccess.textContent = 'Password set successfully! Returning to login...';
-          setTimeout(() => {
-            setPasswordSection.classList.add('hidden');
-            loginSection.classList.remove('hidden');
-            loginError.textContent = '';
-            loginSuccess.textContent = '';
-          }, 1500);
-        } else {
-          setPassError.textContent = data.message || 'Failed to set password.';
-        }
-      } catch (err) {
-        console.error(err);
-        setPassError.textContent = err.message || 'Network error. Please try again.';
-      } finally {
-        setPassSubmit.disabled = false;
-        setPassSubmit.textContent = 'Save Password & Log in';
-      }
-    });
+    } catch (err) {
+      console.error(err);
+      if (errorEl) errorEl.textContent = err.message;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Log in';
+    }
+  });
   </script>
 </body>
 </html>
