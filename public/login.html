@@ -62,14 +62,45 @@
     }
     input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
 
-    button {
+    .input-group {
+      position: relative;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .input-group input {
+      margin-bottom: 0;
+      padding-right: 64px;
+    }
+    .toggle-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: auto;
+      width: auto;
+      margin: 0;
+      padding: 4px 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      border: 0;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .toggle-btn:hover:not(:disabled) {
+      background: transparent;
+      color: var(--ink);
+    }
+
+    button[type="submit"] {
       width: 100%; height: 52px; margin-top: 4px;
       background: var(--green); color: #fff; border: 0; border-radius: 8px;
       font: inherit; font-weight: 500; cursor: pointer;
     }
-    button:hover:not(:disabled) { background: var(--green-dark); }
-    button:disabled { opacity: .7; cursor: not-allowed; }
-    button:focus-visible { outline: 2px solid var(--green-dark); outline-offset: 2px; }
+    button[type="submit"]:hover:not(:disabled) { background: var(--green-dark); }
+    button[type="submit"]:disabled { opacity: .7; cursor: not-allowed; }
+    button[type="submit"]:focus-visible { outline: 2px solid var(--green-dark); outline-offset: 2px; }
 
     .msg { margin: 0 0 16px; font-size: 14px; }
     .msg:empty { display: none; }
@@ -113,7 +144,10 @@
             <input id="email" name="email" type="email" autocomplete="email" required>
 
             <label for="password">Password</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" required>
+            <div class="input-group">
+              <input id="password" name="password" type="password" autocomplete="current-password" required>
+              <button type="button" class="toggle-btn" onclick="toggleVisibility('password', this)">Show</button>
+            </div>
 
             <p class="msg error" id="loginError" role="alert"></p>
             <p class="msg success" id="loginSuccess" role="status"></p>
@@ -122,8 +156,8 @@
           </form>
 
           <div class="footer-links">
-            <a href="/">Create an account</a>
-            <a href="#" id="forgotPasswordBtn">Forgot password?</a>
+            <a href="/register">Create an account</a>
+            <a href="/forgot-password" class="forgot-link">Forgot password?</a>
           </div>
         </div>
 
@@ -136,10 +170,16 @@
             <input type="hidden" id="setPassEmail" />
 
             <label for="newPassword">New Password</label>
-            <input id="newPassword" name="newPassword" type="password" minlength="8" required>
+            <div class="input-group">
+              <input id="newPassword" name="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+              <button type="button" class="toggle-btn" onclick="toggleVisibility('newPassword', this)">Show</button>
+            </div>
 
             <label for="confirmNewPassword">Confirm New Password</label>
-            <input id="confirmNewPassword" name="confirmNewPassword" type="password" minlength="8" required>
+            <div class="input-group">
+              <input id="confirmNewPassword" name="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required>
+              <button type="button" class="toggle-btn" onclick="toggleVisibility('confirmNewPassword', this)">Show</button>
+            </div>
 
             <p class="msg error" id="setPassError" role="alert"></p>
             <p class="msg success" id="setPassSuccess" role="status"></p>
@@ -165,6 +205,17 @@
     const setPassSuccess = document.getElementById('setPassSuccess');
     const setPassSubmit = document.getElementById('setPassSubmit');
 
+    function toggleVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Hide';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Show';
+      }
+    }
+
     // Handle Login Submit
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -189,21 +240,34 @@
           body: JSON.stringify({ email, password })
         });
 
-        const data = await res.json();
+        let data = {};
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error('Server returned an unexpected response. Please ensure backend node index.js is running.');
+        }
 
-        if (res.ok) {
-          loginSuccess.textContent = 'Login successful! Redirecting...';
-          setTimeout(() => { window.location.href = '/'; }, 1000);
-        } else if (data.code === 'REQUIRE_SET_PASSWORD') {
+        // 1. First Check: Require Password Set for First-Time Users
+        if (data.code === 'REQUIRE_SET_PASSWORD') {
           document.getElementById('setPassEmail').value = email;
           loginSection.classList.add('hidden');
           setPasswordSection.classList.remove('hidden');
-        } else {
-          loginError.textContent = data.message || 'Login failed.';
+          return;
         }
+
+        // 2. Standard Success
+        if (res.ok) {
+          loginSuccess.textContent = 'Login successful! Redirecting...';
+          setTimeout(() => { window.location.href = '/'; }, 1000);
+          return;
+        }
+
+        // 3. Error Case (Invalid Credentials, Blocked Account, etc.)
+        loginError.textContent = data.message || 'Login failed.';
+
       } catch (err) {
         console.error(err);
-        loginError.textContent = 'Network error. Please try again.';
+        loginError.textContent = err.message || 'Network error. Please try again.';
       } finally {
         loginSubmit.disabled = false;
         loginSubmit.textContent = 'Log in';
@@ -240,7 +304,12 @@
           body: JSON.stringify({ email, newPassword })
         });
 
-        const data = await res.json();
+        let data = {};
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error('Server error while setting password.');
+        }
 
         if (res.ok) {
           setPassSuccess.textContent = 'Password set successfully! Returning to login...';
@@ -255,17 +324,11 @@
         }
       } catch (err) {
         console.error(err);
-        setPassError.textContent = 'Network error. Please try again.';
+        setPassError.textContent = err.message || 'Network error. Please try again.';
       } finally {
         setPassSubmit.disabled = false;
         setPassSubmit.textContent = 'Save Password & Log in';
       }
-    });
-
-    // Forgot password alert handler
-    document.getElementById('forgotPasswordBtn').addEventListener('click', (e) => {
-      e.preventDefault();
-      alert('Please contact your system administrator to reset your password.');
     });
   </script>
 </body>
