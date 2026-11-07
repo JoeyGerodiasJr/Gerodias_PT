@@ -46,92 +46,129 @@ app.get('/forgotPassword', (req, res) => {
 });
 
 // Serve Reset Password Page
-app.get("/resetPassword", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "resetPassword.html"));
+app.get('/resetPassword', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'resetPassword.html'));
 });
 
-// Login Endpoint
-app.post('/api/auth/login', async (req, res) => {
+// Serve Reset Password Page
+app.post('/api/auth/resetPassword', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, token, newPassword } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required.' });
-    }
-
-    // 1. Fetch user from Supabase
-    const { data: user, error } = await supabase
-      .from('app_user')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    if (error || !user) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
-    }
-
-    // 2. Check if user is blocked
-    if (user.is_blocked) {
-      return res.status(403).json({ message: 'This account is blocked.' });
-    }
-
-    // 3. FIRST-TIME LOGIN CHECK (Must run BEFORE bcrypt.compare)
-    if (user.password_hash === '!pending-no-password') {
-      return res.status(200).json({ 
-        code: 'REQUIRE_SET_PASSWORD', 
-        email: user.email,
-        message: 'First time login. Please set your password.' 
-      });
-    }
-
-    // 4. Verify password for returning users
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
-    }
-
-    // 5. Establish session
-    req.session.user = { id: user.id, email: user.email };
-    return res.status(200).json({ message: 'Login successful!' });
-
-  } catch (err) {
-    console.error('Login error:', err);
-    return res.status(500).json({ message: 'Internal server error.' });
-  }
-});
-
-// Set Password Endpoint
-app.post('/api/auth/set-password', async (req, res) => {
-  try {
-    const { email, newPassword } = req.body;
-
-    if (!email || !newPassword) {
-      return res.status(400).json({ message: 'Email and new password are required.' });
+    if (!email || !token || !newPassword) {
+      console.log('Reset Password Failed: Missing required fields', { email, hasToken: !!token });
+      return res.status(400).json({ message: 'Invalid or missing reset token/email.' });
     }
 
     if (newPassword.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     }
 
-    // 1. Hash the new password with bcrypt (10 rounds)
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-
-    // 2. Update password_hash in Supabase
-    const { data: user, error: updateError } = await supabase
+    // 1. Fetch user record from Supabase
+    const { data: user, error: fetchError } = await supabase
       .from('app_user')
-      .update({ password_hash: newPasswordHash })
+      .select('email, reset_token, reset_token_expires, is_blocked')
       .eq('email', email.toLowerCase())
-      .select('email')
-      .single();
+      .maybeSingle();
 
-    if (updateError || !user) {
-      console.error('Supabase set-password error:', updateError);
-      return res.status(400).json({ message: 'Failed to update user password. User may not exist.' });
+    if (fetchError || !user) {
+      console.log('Reset Password Failed: User not found for email:', email);
+      return res.status(400).json({ message: 'Invalid or expired password reset link.' });
     }
 
-    return res.status(200).json({ message: 'Password set successfully! You can now log in.' });
+    if (user.is_blocked) {
+      return res.status(403).json({ message: 'This account is blocked.' });
+    }
+
+    // 2. Check token match and expiry
+    const now = new Date();
+    const tokenExpiry = new Date(user.reset_token_expires);
+
+    if (!user.reset_token || user.reset_token !== token) {
+      console.log('Reset Password Failed: Token mismatch');
+      return res.status(400).json({ message: 'Invalid or expired password reset link.' });
+    }
+
+    if (now > tokenExpiry) {
+      console.log('Reset Password Failed: Token expired');
+      return res.status(400).json({ message: 'Invalid or expired password reset link.' });
+    }
+
+    // 3. Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // 4. Update database and clear token fields
+    const { error: updateError } = await supabase
+      .from('app_user')
+      .update({
+        password_hash: newPasswordHash,
+        reset_token: null,
+        reset_token_expires: null
+      })
+      .eq('email', user.email);
+
+    if (updateError) {
+      console.error('Supabase update error during reset:', updateError);
+      return res.status(500).json({ message: 'Failed to update password in database.' });
+    }
+
+    return res.status(200).json({ message: 'Password reset successful! Redirecting to login...' });
+
   } catch (err) {
-    console.error('Set-password server error:', err);
+    console.error('Reset password error:', err);
+    return res.status(500).json({ message: 'Internal server error resetting password.' });
+  }
+});
+
+// Set Password Endpoint
+app.post('/api/auth/setPassword', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email and password are required.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
+    }
+
+    const cleanedEmail = email.trim().toLowerCase();
+
+    // 1. Fetch user by username (where emails are stored in app_user)
+    const { data: user, error: fetchError } = await supabase
+      .from('app_user')
+      .select('username, is_blocked')
+      .ilike('username', cleanedEmail)
+      .maybeSingle();
+
+    if (fetchError || !user) {
+      console.error('User search failed:', fetchError || 'No user found');
+      return res.status(400).json({ message: `Account for ${cleanedEmail} was not found.` });
+    }
+
+    if (user.is_blocked) {
+      return res.status(403).json({ message: 'This account is blocked.' });
+    }
+
+    // 2. Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // 3. Update password_hash in Supabase
+    const { error: updateError } = await supabase
+      .from('app_user')
+      .update({ password_hash: newPasswordHash })
+      .eq('username', user.username);
+
+    if (updateError) {
+      console.error('Supabase update failed:', updateError);
+      return res.status(500).json({ message: `Database update failed: ${updateError.message}` });
+    }
+
+    return res.status(200).json({ message: 'Password updated successfully! Redirecting...' });
+
+  } catch (err) {
+    console.error('Set password endpoint error:', err);
     return res.status(500).json({ message: 'Internal server error while setting password.' });
   }
 });
@@ -308,6 +345,71 @@ app.post('/api/auth/reset-password', async (req, res) => {
   } catch (err) {
     console.error('Reset password error:', err);
     return res.status(500).json({ message: 'Internal server error resetting password.' });
+  }
+});
+
+//Login Endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required.' });
+    }
+
+    // 1. Fetch user by username (where emails are stored in app_user)
+    const { data: user, error: fetchError } = await supabase
+      .from('app_user')
+      .select('username, password_hash, is_blocked')
+      .eq('username', email.toLowerCase())
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Supabase login fetch error:', fetchError);
+      return res.status(500).json({ message: 'Database error while logging in.' });
+    }
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid email or password.' });
+    }
+
+    // 2. Account blocked check
+    if (user.is_blocked) {
+      return res.status(403).json({ message: 'This account is blocked. Please contact support.' });
+    }
+
+    // 3. First-time password setup check (handles null, empty, or !pending-no-password)
+    const isPendingSetup = 
+      !user.password_hash || 
+      user.password_hash === '!pending-no-password' || 
+      !user.password_hash.startsWith('$2b$');
+
+    if (isPendingSetup) {
+      return res.status(400).json({ 
+        message: 'Password setup required. Please set your password first.',
+        requireSetPassword: true 
+      });
+    }
+
+    // 4. Verify password hash
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid email or password.' });
+    }
+
+    // 5. Store session user
+    if (req.session) {
+      req.session.user = { email: user.username };
+    }
+
+    return res.status(200).json({ 
+      message: 'Login successful!',
+      user: { email: user.username }
+    });
+
+  } catch (err) {
+    console.error('Login server error:', err);
+    return res.status(500).json({ message: 'Internal server error while logging in.' });
   }
 });
 
