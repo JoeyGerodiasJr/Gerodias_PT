@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User Management - Gerodias PT.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green-dark: #14622f;
+      --green: #17803f;
+      --green-light: #3f9a62;
+      --bg: #f4f8f5;
+      --ink: #12261a;
+      --muted: #4a5a50;
+      --border: #dbe6df;
+      --danger: #b42318;
+      --warning: #b76e00;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Public Sans', system-ui, sans-serif;
+      background-color: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-mark {
+      display: grid; place-items: center; width: 36px; height: 36px;
+      background: var(--green); color: #fff;
+      border-radius: 8px; font-weight: 600; font-size: 18px;
+    }
+    .logo-name { font-size: 22px; font-weight: 600; color: var(--ink); }
+
+    /* Main Container */
+    .container {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .page-header h1 { font-size: 26px; font-weight: 600; }
+
+    /* Primary Button */
+    .btn-primary {
+      background: var(--green);
+      color: #fff;
+      border: 0;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-primary:hover { background: var(--green-dark); }
+
+    /* Table Component */
+    .table-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(20, 98, 47, 0.05);
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      background: #fafdfb;
+      padding: 16px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 16px 20px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: 0; }
+
+    /* Status Badges */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-active { background: #e8f5e9; color: var(--green-dark); }
+    .badge-pending { background: #fff8e1; color: var(--warning); }
+    .badge-blocked { background: #fde8e8; color: var(--danger); }
+
+    /* Action Buttons */
+    .btn-action {
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-right: 6px;
+    }
+    .btn-action:hover { background: #f0f4f1; }
+    .btn-block { color: var(--danger); border-color: #f8b4b4; }
+    .btn-block:hover { background: #fde8e8; }
+    .btn-unblock { color: var(--green-dark); border-color: #a3d9b1; }
+    .btn-unblock:hover { background: #e8f5e9; }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 100;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 440px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    .modal h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    .form-group input {
+      width: 100%; height: 42px; padding: 0 12px;
+      border: 1px solid var(--border); border-radius: 8px; font: inherit;
+    }
+    .modal-actions {
+      display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;
+    }
+    .btn-secondary {
+      background: #e0e7e1; color: var(--ink); border: 0; padding: 10px 16px;
+      border-radius: 8px; font: inherit; font-weight: 500; cursor: pointer;
+    }
+
+    .msg-banner { margin-bottom: 16px; font-size: 14px; }
+    .msg-banner.error { color: var(--danger); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <span class="logo-mark">G</span>
+      <span class="logo-name">Gerodias PT.</span>
+    </div>
+    <a href="/login" style="color: var(--muted); text-decoration: none; font-size: 14px;">Logout</a>
+  </header>
+
+  <div class="container">
+    <div class="page-header">
+      <h1>User Management</h1>
+      <button class="btn-primary" id="openAddModalBtn">+ Add User</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody">
+          <tr><td colspan="4" style="text-align: center;">Loading users…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add / Edit Modal -->
+  <div class="modal-overlay hidden" id="userModal">
+    <div class="modal">
+      <h2 id="modalTitle">Add New User</h2>
+      <div id="modalError" class="msg-banner error"></div>
+      
+      <form id="userForm">
+        <input type="hidden" id="userId">
+        
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="userEmail">Email Address</label>
+          <input type="email" id="userEmail" required>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="closeModalBtn">Cancel</button>
+          <button type="submit" class="btn-primary" id="saveUserBtn">Save User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let usersData = [];
+
+  const tableBody = document.getElementById('userTableBody');
+  const userModal = document.getElementById('userModal');
+  const userForm = document.getElementById('userForm');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalError = document.getElementById('modalError');
+
+  // Load users on init
+  loadUsers();
+
+  async function loadUsers() {
+    try {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.message || `Server Error (${res.status})`);
+      }
+
+      usersData = data;
+      renderTable(usersData);
+    } catch (err) {
+      tableBody.innerHTML = `<tr><td colspan="4" style="color: #b42318; text-align: center; font-weight: 500;">${err.message}</td></tr>`;
+    }
+  }
+
+  function renderTable(users) {
+    if (users.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">No users found.</td></tr>`;
+      return;
+    }
+
+    tableBody.innerHTML = users.map(u => {
+      let statusBadge = '<span class="badge badge-active">Active</span>';
+      if (u.isBlocked) {
+        statusBadge = '<span class="badge badge-blocked">Blocked</span>';
+      } else if (u.isPendingSetup) {
+        statusBadge = '<span class="badge badge-pending">Pending</span>';
+      }
+
+      const fullName = `${u.firstName} ${u.lastName}`.trim() || '—';
+      const blockBtnText = u.isBlocked ? 'Unblock' : 'Block';
+      const blockBtnClass = u.isBlocked ? 'btn-unblock' : 'btn-block';
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(fullName)}</strong></td>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <button class="btn-action" onclick="openEditModal(${u.id})">Edit</button>
+            <button class="btn-action ${blockBtnClass}" onclick="toggleBlock(${u.id}, ${!u.isBlocked})">${blockBtnText}</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Modal Control
+  document.getElementById('openAddModalBtn').addEventListener('click', () => {
+    userForm.reset();
+    document.getElementById('userId').value = '';
+    modalTitle.textContent = 'Add New User';
+    modalError.textContent = '';
+    userModal.classList.remove('hidden');
+  });
+
+  document.getElementById('closeModalBtn').addEventListener('click', () => {
+    userModal.classList.add('hidden');
+  });
+
+  window.openEditModal = function(id) {
+    const user = usersData.find(u => u.id == id);
+    if (!user) return;
+
+    document.getElementById('userId').value = user.id;
+    document.getElementById('firstName').value = user.firstName;
+    document.getElementById('lastName').value = user.lastName;
+    document.getElementById('userEmail').value = user.email;
+
+    modalTitle.textContent = 'Edit User';
+    modalError.textContent = '';
+    userModal.classList.remove('hidden');
+  };
+
+  // Form Submit Handler (Create & Update)
+  userForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    modalError.textContent = '';
+
+    const id = document.getElementById('userId').value;
+    const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const email = document.getElementById('userEmail').value;
+
+    const isEdit = Boolean(id);
+    const url = isEdit ? `/api/admin/users/${id}` : '/api/admin/users';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, firstName, lastName })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Action failed.');
+
+      userModal.classList.add('hidden');
+      loadUsers();
+
+    } catch (err) {
+      modalError.textContent = err.message;
+    }
+  });
+
+  // Block/Unblock Handler
+  window.toggleBlock = async function(id, shouldBlock) {
+    if (!confirm(`Are you sure you want to ${shouldBlock ? 'block' : 'unblock'} this user?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/users/${id}/block`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isBlocked: shouldBlock })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Block update failed.');
+
+      loadUsers();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  }
+  </script>
+</body>
+</html>

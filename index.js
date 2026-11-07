@@ -35,17 +35,22 @@ app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
-// Serve Set Password Page
+//Serve users.html on /users
+app.get('/users', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'users.html'));
+});
+
+// Serve setPassword.html on /setPassword
 app.get("/setPassword", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "setPassword.html"));
 });
 
-// Serve Forgot Password Page
+// Serve forgotPassword.html on /forgotPassword
 app.get('/forgotPassword', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html'));
 });
 
-// Serve Reset Password Page
+// Serve resetPassword.html on /resetPassword
 app.get('/resetPassword', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'resetPassword.html'));
 });
@@ -373,6 +378,11 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password.' });
     }
 
+    // Account rejected check (if you have a status column for blocked users)
+    if (user.status === 'rejected') {
+      return res.status(403).json({ message: 'This account is blocked. Please contact support.' });
+    }
+
     // 2. Account blocked check
     if (user.is_blocked) {
       return res.status(403).json({ message: 'This account is blocked. Please contact support.' });
@@ -410,6 +420,153 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) {
     console.error('Login server error:', err);
     return res.status(500).json({ message: 'Internal server error while logging in.' });
+  }
+});
+
+//User Management Endpoint
+// 1. GET ALL USERS (Excludes soft-deleted users AND Superadmins)
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    // 1. Fetch Superadmin role IDs from the role table
+    const { data: roles } = await supabase
+      .from('role')
+      .select('role_id, role_name');
+
+    const superadminRoleIds = (roles || [])
+      .filter(r => r.role_name === 'System Administrator' || r.role_name === 'Superadmin')
+      .map(r => r.role_id);
+
+    const superadminRoleIdSet = new Set(superadminRoleIds);
+
+    // 2. Fetch active app_users including their role_id
+    const { data: users, error } = await supabase
+      .from('app_user')
+      .select('user_id, username, email, first_name, last_name, status, password_hash, is_deleted, role_id')
+      .or('is_deleted.is.null,is_deleted.eq.false');
+
+    if (error) throw error;
+
+    // 3. Filter out Superadmin accounts by role_id in memory
+    const formattedUsers = (users || [])
+      .filter(u => !superadminRoleIdSet.has(u.role_id))
+      .map(u => ({
+        id: u.user_id,
+        email: u.email || u.username,
+        firstName: u.first_name || '',
+        lastName: u.last_name || '',
+        status: u.status,
+        isBlocked: u.status === 'rejected',
+        isPendingSetup: u.status === 'pending' || u.password_hash === '!pending-no-password'
+      }));
+
+    res.json(formattedUsers);
+  } catch (err) {
+    console.error('Fetch users error:', err);
+    res.status(500).json({ message: `Database error: ${err.message}` });
+  }
+});
+
+// 2. ADD NEW USER
+app.post('/api/admin/users', async (req, res) => {
+  try {
+    const { email, firstName, lastName } = req.body;
+
+    if (!email || !firstName || !lastName) {
+      return res.status(400).json({ message: 'First name, last name, and email are required.' });
+    }
+
+    const cleanedEmail = email.trim().toLowerCase();
+
+    // Check if email already exists
+    const { data: existingUser } = await supabase
+      .from('app_user')
+      .select('username')
+      .or(`email.eq.${cleanedEmail},username.eq.${cleanedEmail}`)
+      .maybeSingle();
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'An account with this email already exists.' });
+    }
+
+    // Insert user following strict DBA-03 NOT NULL constraints
+    const { data: newUser, error: insertError } = await supabase
+      .from('app_user')
+      .insert([{
+        username: cleanedEmail,
+        email: cleanedEmail,
+        password_hash: '!pending-no-password',
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        status: 'pending'
+      }])
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    res.status(201).json({ 
+      message: 'User created successfully!',
+      user: newUser 
+    });
+
+  } catch (err) {
+    console.error('Add user error:', err);
+    res.status(500).json({ message: err.message || 'Failed to add user.' });
+  }
+});
+
+// 3. EDIT USER DETAILS
+app.put('/api/admin/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, firstName, lastName } = req.body;
+
+    if (!email || !firstName || !lastName) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    const cleanedEmail = email.trim().toLowerCase();
+
+    const { error: updateError } = await supabase
+      .from('app_user')
+      .update({
+        username: cleanedEmail,
+        email: cleanedEmail,
+        first_name: firstName.trim(),
+        last_name: lastName.trim()
+      })
+      .eq('user_id', id);
+
+    if (updateError) throw updateError;
+
+    res.json({ message: 'User updated successfully.' });
+  } catch (err) {
+    console.error('Update user error:', err);
+    res.status(500).json({ message: err.message || 'Failed to update user.' });
+  }
+});
+
+// 4. BLOCK / UNBLOCK USER TOGGLE (Status: active <-> rejected)
+app.patch('/api/admin/users/:id/block', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isBlocked } = req.body;
+
+    const newStatus = isBlocked ? 'rejected' : 'active';
+
+    const { error: updateError } = await supabase
+      .from('app_user')
+      .update({ status: newStatus })
+      .eq('user_id', id);
+
+    if (updateError) throw updateError;
+
+    res.json({ 
+      message: `User status changed to ${newStatus}.` 
+    });
+  } catch (err) {
+    console.error('Toggle block error:', err);
+    res.status(500).json({ message: err.message || 'Failed to update user block status.' });
   }
 });
 
