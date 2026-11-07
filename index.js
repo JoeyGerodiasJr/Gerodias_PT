@@ -424,24 +424,40 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 //User Management Endpoint
+// 1. GET ALL USERS (Excludes soft-deleted users AND Superadmins)
 app.get('/api/admin/users', async (req, res) => {
   try {
+    // 1. Fetch Superadmin role IDs from the role table
+    const { data: roles } = await supabase
+      .from('role')
+      .select('role_id, role_name');
+
+    const superadminRoleIds = (roles || [])
+      .filter(r => r.role_name === 'System Administrator' || r.role_name === 'Superadmin')
+      .map(r => r.role_id);
+
+    const superadminRoleIdSet = new Set(superadminRoleIds);
+
+    // 2. Fetch active app_users including their role_id
     const { data: users, error } = await supabase
       .from('app_user')
-      .select('user_id, username, email, first_name, last_name, status, password_hash, is_deleted')
+      .select('user_id, username, email, first_name, last_name, status, password_hash, is_deleted, role_id')
       .or('is_deleted.is.null,is_deleted.eq.false');
-      
+
     if (error) throw error;
 
-    const formattedUsers = (users || []).map(u => ({
-      id: u.user_id,
-      email: u.email || u.username,
-      firstName: u.first_name || '',
-      lastName: u.last_name || '',
-      status: u.status,
-      isBlocked: u.status === 'rejected',
-      isPendingSetup: u.status === 'pending' || u.password_hash === '!pending-no-password'
-    }));
+    // 3. Filter out Superadmin accounts by role_id in memory
+    const formattedUsers = (users || [])
+      .filter(u => !superadminRoleIdSet.has(u.role_id))
+      .map(u => ({
+        id: u.user_id,
+        email: u.email || u.username,
+        firstName: u.first_name || '',
+        lastName: u.last_name || '',
+        status: u.status,
+        isBlocked: u.status === 'rejected',
+        isPendingSetup: u.status === 'pending' || u.password_hash === '!pending-no-password'
+      }));
 
     res.json(formattedUsers);
   } catch (err) {
@@ -547,61 +563,6 @@ app.patch('/api/admin/users/:id/block', async (req, res) => {
 
     res.json({ 
       message: `User status changed to ${newStatus}.` 
-    });
-  } catch (err) {
-    console.error('Toggle block error:', err);
-    res.status(500).json({ message: err.message || 'Failed to update user block status.' });
-  }
-});
-
-// 3. EDIT USER DETAILS
-app.put('/api/admin/users/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { email, firstName, lastName } = req.body;
-
-    if (!email || !firstName || !lastName) {
-      return res.status(400).json({ message: 'All fields are required.' });
-    }
-
-    const cleanedEmail = email.trim().toLowerCase();
-
-    const { error: updateError } = await supabase
-      .from('app_user')
-      .update({
-        username: cleanedEmail,
-        email: cleanedEmail,
-        first_name: firstName.trim(),
-        last_name: lastName.trim()
-      })
-      .eq('user_id', id);
-
-    if (updateError) throw updateError;
-
-    res.json({ message: 'User updated successfully.' });
-  } catch (err) {
-    console.error('Update user error:', err);
-    res.status(500).json({ message: err.message || 'Failed to update user.' });
-  }
-});
-
-// 4. BLOCK / UNBLOCK USER TOGGLE (Maps to status column)
-app.patch('/api/admin/users/:id/block', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { isBlocked } = req.body;
-
-    const newStatus = isBlocked ? 'rejected' : 'active';
-
-    const { error: updateError } = await supabase
-      .from('app_user')
-      .update({ status: newStatus })
-      .eq('user_id', id);
-
-    if (updateError) throw updateError;
-
-    res.json({ 
-      message: `User status updated to ${newStatus}.` 
     });
   } catch (err) {
     console.error('Toggle block error:', err);
