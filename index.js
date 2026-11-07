@@ -41,8 +41,8 @@ app.get("/setPassword", (req, res) => {
 });
 
 // Serve Forgot Password Page
-app.get("/forgotPassword", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "forgotPassword.html"));
+app.get('/forgotPassword', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html'));
 });
 
 // Serve Reset Password Page
@@ -191,7 +191,7 @@ async function verifyConnection() {
   }
 }
 // Forgot Password Endpoint
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgotPassword', async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -199,14 +199,13 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       return res.status(400).json({ message: 'Please provide a valid email address.' });
     }
 
-    // 1. Check if user exists
+    // 1. Fetch user by email
     const { data: user, error: fetchError } = await supabase
       .from('app_user')
       .select('email, is_blocked')
       .eq('email', email.toLowerCase())
-      .single();
+      .maybeSingle();
 
-    // Generic response prevents account enumeration attacks
     const genericSuccess = {
       message: 'If an account exists with that email, a password reset link has been sent.'
     };
@@ -219,31 +218,33 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       return res.status(403).json({ message: 'This account is blocked. Please contact support.' });
     }
 
-    // 2. Generate secure 32-byte token and expiration (1 hour from now)
+    // 2. Generate reset token (1 hour expiry)
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetExpires = new Date(Date.now() + 3600000).toISOString(); // +1 Hour
+    const resetExpires = new Date(Date.now() + 3600000).toISOString();
 
-    // 3. Save token and expiration to Supabase
+    // 3. Save token in Supabase
     const { error: updateError } = await supabase
       .from('app_user')
       .update({
         reset_token: resetToken,
         reset_token_expires: resetExpires
       })
-      .eq('id', user.id);
+      .eq('email', user.email);
 
     if (updateError) {
-      throw updateError;
+      console.error('Supabase update error:', updateError);
+      return res.status(500).json({ message: 'Failed to generate reset link. Database error.' });
     }
 
-    // 4. Console log reset link (Dev mode substitute for email service)
-    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+    // 4. Print link to terminal
+    const resetLink = `http://localhost:3000/resetPassword?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
     console.log('\n----------------------------------------');
     console.log(`PASSWORD RESET LINK FOR ${user.email}:`);
     console.log(resetLink);
     console.log('----------------------------------------\n');
 
     return res.status(200).json(genericSuccess);
+
   } catch (err) {
     console.error('Forgot password error:', err);
     return res.status(500).json({ message: 'Internal server error processing request.' });
@@ -329,10 +330,7 @@ app.get("/api/auth/me", (req, res) => {
   res.json({ user: req.session.user });
 });
 
-// ==========================================
-// 3. SERVER INITIALIZATION
-// ==========================================
-
+// Server Initialization
 async function verifyConnection() {
   console.log("Checking connection...");
   const { error } = await supabase.from("test").select("*").limit(1);
