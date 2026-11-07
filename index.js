@@ -121,37 +121,54 @@ app.post('/api/auth/resetPassword', async (req, res) => {
 });
 
 // Set Password Endpoint
-app.post('/api/auth/set-password', async (req, res) => {
+app.post('/api/auth/setPassword', async (req, res) => {
   try {
     const { email, newPassword } = req.body;
 
     if (!email || !newPassword) {
-      return res.status(400).json({ message: 'Email and new password are required.' });
+      return res.status(400).json({ message: 'Email and password are required.' });
     }
 
     if (newPassword.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     }
 
-    // 1. Hash the new password with bcrypt (10 rounds)
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const cleanedEmail = email.trim().toLowerCase();
 
-    // 2. Update password_hash in Supabase
-    const { data: user, error: updateError } = await supabase
+    // 1. Fetch user by username (where emails are stored in app_user)
+    const { data: user, error: fetchError } = await supabase
       .from('app_user')
-      .update({ password_hash: newPasswordHash })
-      .eq('email', email.toLowerCase())
-      .select('email')
-      .single();
+      .select('username, is_blocked')
+      .ilike('username', cleanedEmail)
+      .maybeSingle();
 
-    if (updateError || !user) {
-      console.error('Supabase set-password error:', updateError);
-      return res.status(400).json({ message: 'Failed to update user password. User may not exist.' });
+    if (fetchError || !user) {
+      console.error('User search failed:', fetchError || 'No user found');
+      return res.status(400).json({ message: `Account for ${cleanedEmail} was not found.` });
     }
 
-    return res.status(200).json({ message: 'Password set successfully! You can now log in.' });
+    if (user.is_blocked) {
+      return res.status(403).json({ message: 'This account is blocked.' });
+    }
+
+    // 2. Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // 3. Update password_hash in Supabase
+    const { error: updateError } = await supabase
+      .from('app_user')
+      .update({ password_hash: newPasswordHash })
+      .eq('username', user.username);
+
+    if (updateError) {
+      console.error('Supabase update failed:', updateError);
+      return res.status(500).json({ message: `Database update failed: ${updateError.message}` });
+    }
+
+    return res.status(200).json({ message: 'Password updated successfully! Redirecting...' });
+
   } catch (err) {
-    console.error('Set-password server error:', err);
+    console.error('Set password endpoint error:', err);
     return res.status(500).json({ message: 'Internal server error while setting password.' });
   }
 });
