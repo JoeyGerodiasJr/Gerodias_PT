@@ -149,11 +149,12 @@ async function countActiveSuperadmins(superadminRoleId) {
 }
 
 // Static File Routes
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
-app.get("/register", (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
-app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
 app.get('/users', (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
-app.get("/setPassword", (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
+app.get('/setPassword', (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
 app.get('/forgotPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html')));
 app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
 
@@ -390,7 +391,17 @@ app.get("/api/auth/me", async (req, res) => {
     });
     return;
   }
-  return res.json({ user: req.session.user });
+
+  const userPayload = {
+    id: user.user_id,
+    email: user.email,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    roleName: user.role?.role_name || 'User'
+  };
+
+  req.session.user = { ...req.session.user, ...userPayload };
+  return res.json({ user: userPayload });
 });
 
 app.get('/api/auth/me/rights', requireAuth, async (req, res) => {
@@ -599,7 +610,7 @@ app.put('/api/admin/users/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const currentUserId = req.session.user?.id;
-    const { email, firstName, lastName } = req.body;
+    const { email, firstName, lastName, roleId } = req.body;
 
     const { data: requester } = await supabase
       .from('app_user')
@@ -625,10 +636,27 @@ app.put('/api/admin/users/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ message: 'Action denied: Managers can only edit Staff accounts.' });
     }
 
+    // Build update object
     const cleanedEmail = email.trim().toLowerCase();
+    const updateData = {
+      username: cleanedEmail,
+      email: cleanedEmail,
+      first_name: firstName.trim(),
+      last_name: lastName.trim()
+    };
+
+    // Update role if passed
+    if (roleId) {
+      // Prevent non-Superadmins from assigning Superadmin role (ID 4)
+      if (!isSuperadminRole(requesterRole) && String(roleId) === '4') {
+        return res.status(403).json({ message: 'Action denied: Only Superadmins can assign the Superadmin role.' });
+      }
+      updateData.role_id = roleId;
+    }
+
     const { error: updateError } = await supabase
       .from('app_user')
-      .update({ username: cleanedEmail, email: cleanedEmail, first_name: firstName.trim(), last_name: lastName.trim() })
+      .update(updateData)
       .eq('user_id', id);
 
     if (updateError) throw updateError;
