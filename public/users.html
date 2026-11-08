@@ -191,6 +191,21 @@
       background-color: #ecfdf3;
     }
 
+    .btn-action-rights {
+      background-color: #ffffff;
+      border: 1px solid #117b44;
+      color: #117b44;
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-action-rights:hover {
+      background-color: #f0fdf4;
+      color: #0d6236;
+    }
+
     /* Modal Overlay */
     .modal-backdrop-custom {
       position: fixed;
@@ -282,14 +297,68 @@
     </div>
   </div>
 
+  <!-- Rights Management Modal -->
+  <div id="rightsModal" class="modal-backdrop-custom hidden">
+    <div class="bg-white p-4 rounded-4 shadow-lg" style="width: 100%; max-width: 680px;">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h4 class="fw-bold mb-0">Manage User Rights</h4>
+        <button type="button" id="closeRightsModalBtn" class="btn-close" aria-label="Close"></button>
+      </div>
+      <p class="text-secondary small mb-3" id="rightsTargetUserText">Configuring permissions</p>
+      
+      <div id="rightsAlert" class="alert alert-danger py-2 small hidden"></div>
+
+      <form id="rightsForm">
+        <input type="hidden" id="rightsTargetUserId">
+
+        <div class="table-responsive mb-3 border rounded-3">
+          <table class="table align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+              <tr>
+                <th>Module</th>
+                <th class="text-center">Create</th>
+                <th class="text-center">Read</th>
+                <th class="text-center">Update</th>
+                <th class="text-center">Delete</th>
+                <th class="text-end">Quick Select</th>
+              </tr>
+            </thead>
+            <tbody id="rightsTableBody">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center pt-2">
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleGlobalRights(true)">Select All</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleGlobalRights(false)">Deselect All</button>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" id="cancelRightsBtn" class="btn btn-sm btn-outline-secondary">Cancel</button>
+            <button type="submit" id="saveRightsBtn" class="btn btn-sm btn-add-user">Save Rights</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     let usersData = [];
+
+    const APP_MODULES = ['Customer', 'Product', 'Human Resources', 'Sales', 'Reports']
 
     const tableBody = document.getElementById('userTableBody');
     const userModal = document.getElementById('userModal');
     const userForm = document.getElementById('userForm');
     const modalTitle = document.getElementById('modalTitle');
     const modalError = document.getElementById('modalError');
+
+    const rightsModal = document.getElementById('rightsModal');
+    const rightsForm = document.getElementById('rightsForm');
+    const rightsAlert = document.getElementById('rightsAlert');
+    const closeRightsModalBtn = document.getElementById('closeRightsModalBtn');
+    const cancelRightsBtn = document.getElementById('cancelRightsBtn');
 
     const availableRoles = [
       { id: '4', name: 'Superadmin' },
@@ -352,6 +421,10 @@
           ? `<button class="btn-action-edit" onclick="openEditModal('${user.id}')">Edit</button>`
           : '';
 
+        const rightsBtn = user.canEdit
+          ? `<button class="btn-action-rights" onclick="openRightsModal('${user.id}', '${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}')">Rights</button>`
+          : '';
+
         const blockBtn = user.canBlock
           ? `<button class="${user.isBlocked ? 'btn-action-unblock' : 'btn-action-block'}" onclick="toggleBlock('${user.id}', ${!user.isBlocked})">
                ${user.isBlocked ? 'Unblock' : 'Block'}
@@ -362,7 +435,7 @@
           ? `<button class="btn-action-delete" onclick="deleteUser('${user.id}')">Delete</button>`
           : '';
 
-        const actionsList = [editBtn, blockBtn, deleteBtn].filter(Boolean).join('');
+        const actionsList = [rightsBtn, editBtn, blockBtn, deleteBtn].filter(Boolean).join('');
         const actionsContent = actionsList 
           ? `<div class="d-flex align-items-center gap-2">${actionsList}</div>` 
           : `<span class="text-muted small">No actions available</span>`;
@@ -382,6 +455,68 @@
           </tr>
         `;
       }).join('');
+    }
+
+    window.toggleModuleRow = function(moduleName, state) {
+      const row = document.querySelector(`tr[data-module="${moduleName}"]`);
+      if (row) {
+        row.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = state);
+      }
+    };
+
+    window.toggleGlobalRights = function(state) {
+      document.querySelectorAll('#rightsTableBody input[type="checkbox"]').forEach(cb => cb.checked = state);
+    };
+
+    if (closeRightsModalBtn) {
+      closeRightsModalBtn.addEventListener('click', () => rightsModal.classList.add('hidden'));
+    }
+    if (cancelRightsBtn) {
+      cancelRightsBtn.addEventListener('click', () => rightsModal.classList.add('hidden'));
+    }
+
+    if (rightsForm) {
+      rightsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById('rightsTargetUserId').value;
+        const saveBtn = document.getElementById('saveRightsBtn');
+
+        rightsAlert.classList.add('hidden');
+
+        const updatedRights = APP_MODULES.map(mod => {
+          const row = document.querySelector(`tr[data-module="${mod}"]`);
+          return {
+            module_name: mod,
+            can_create: row.querySelector('.cb-create').checked,
+            can_read: row.querySelector('.cb-read').checked,
+            can_update: row.querySelector('.cb-update').checked,
+            can_delete: row.querySelector('.cb-delete').checked
+          };
+        });
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+          const res = await fetch(`/api/admin/users/${userId}/rights`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updatedRights })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Failed to update rights.');
+
+          rightsModal.classList.add('hidden');
+          alert('Permissions updated and logged successfully!');
+        } catch (err) {
+          rightsAlert.textContent = err.message;
+          rightsAlert.classList.remove('hidden');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Rights';
+        }
+      });
     }
 
     const openAddModalBtn = document.getElementById('openAddModalBtn');
@@ -447,6 +582,44 @@
           modalError.textContent = err.message;
         }
       });
+    }
+
+    window.openRightsModal = async function(userId, userName) {
+      document.getElementById('rightsTargetUserId').value = userId;
+      document.getElementById('rightsTargetUserText').textContent = `Configuring permissions for ${userName}`;
+      rightsAlert.classList.add('hidden');
+
+      try {
+        const res = await fetch(`/api/admin/users/${userId}/rights`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to fetch rights');
+        
+        renderRightsTable(data.rights);
+        rightsModal.classList.remove('hidden');
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    function renderRightsTable(rightsMap = {}) {
+      const tbody = document.getElementById('rightsTableBody');
+      tbody.innerHTML = APP_MODULES.map(mod => {
+        const r = rightsMap[mod] || { can_create: false, can_read: false, can_update: false, can_delete: false };
+
+        return `
+          <tr data-module="${mod}">
+            <td class="fw-semibold text-dark">${mod}</td>
+            <td class="text-center"><input type="checkbox" class="form-check-input cb-create" ${r.can_create ? 'checked' : ''}></td>
+            <td class="text-center"><input type="checkbox" class="form-check-input cb-read" ${r.can_read ? 'checked' : ''}></td>
+            <td class="text-center"><input type="checkbox" class="form-check-input cb-update" ${r.can_update ? 'checked' : ''}></td>
+            <td class="text-center"><input type="checkbox" class="form-check-input cb-delete" ${r.can_delete ? 'checked' : ''}></td>
+            <td class="text-end">
+              <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 me-2" onclick="toggleModuleRow('${mod}', true)">All</button>
+              <button type="button" class="btn btn-link btn-sm text-decoration-none text-danger p-0" onclick="toggleModuleRow('${mod}', false)">None</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     window.changeRole = async function(id, roleId) {
