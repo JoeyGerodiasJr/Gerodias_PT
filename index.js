@@ -33,6 +33,61 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function checkPermission(moduleName, action) {
+  return async (req, res, next) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized access." });
+      }
+
+      // 1. Fetch requester role for Superadmin bypass
+      const { data: userRecord, error: userError } = await supabase
+        .from('app_user')
+        .select('role (role_name)')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (userError) throw userError;
+
+      const roleName = userRecord?.role?.role_name;
+
+      // Superadmins automatically bypass module permission checks
+      if (isSuperadminRole(roleName)) {
+        return next();
+      }
+
+      // 2. Query target user's rights for this specific module
+      const { data: rights, error: rightsError } = await supabase
+        .from('user_rights')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('module_name', moduleName)
+        .maybeSingle();
+
+      if (rightsError) throw rightsError;
+
+      // 3. Verify target permission flag (can_create, can_read, can_update, can_delete)
+      if (rights && rights[action] === true) {
+        return next();
+      }
+
+      // 4. Deny access if permission flag is false or record doesn't exist
+      return res.status(403).json({
+        message: `Access denied: You do not have '${action}' rights for the ${moduleName} module.`
+      });
+
+    } catch (err) {
+      console.error(`Permission check error (${moduleName} - ${action}):`, err);
+      return res.status(500).json({ message: 'Server error checking user rights.' });
+    }
+  };
+}
+
+app.get('/api/sales', requireAuth, checkPermission('Sales', 'can_read'), async (req, res) => {});
+app.post('/api/sales', requireAuth, checkPermission('Sales', 'can_create'), async (req, res) => {});
+app.delete('/api/sales/:id', requireAuth, checkPermission('Sales', 'can_delete'), async (req, res) => {});
+
 // Role-Based Access Control (RBAC) Helper Functions
 function isSuperadminRole(roleName) {
   if (!roleName) return false;
@@ -94,10 +149,12 @@ async function countActiveSuperadmins(superadminRoleId) {
 }
 
 // Static File Routes
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
-app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
 app.get('/users', (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
-app.get("/setPassword", (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
+app.get('/setPassword', (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
 app.get('/forgotPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html')));
 app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
 
@@ -334,7 +391,56 @@ app.get("/api/auth/me", async (req, res) => {
     });
     return;
   }
-  return res.json({ user: req.session.user });
+
+  const userPayload = {
+    id: user.user_id,
+    email: user.email,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    roleName: user.role?.role_name || 'User'
+  };
+
+  req.session.user = { ...req.session.user, ...userPayload };
+  return res.json({ user: userPayload });
+});
+
+app.get('/api/auth/me/rights', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+
+    // Fetch role to determine Superadmin status
+    const { data: userRecord, error: userError } = await supabase
+      .from('app_user')
+      .select('role (role_name)')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (userError) throw userError;
+
+    const roleName = userRecord?.role?.role_name;
+    const isSuperadmin = isSuperadminRole(roleName);
+
+    // Fetch user rights
+    const { data: rights, error: rightsError } = await supabase
+      .from('user_rights')
+      .select('module_name, can_create, can_read, can_update, can_delete')
+      .eq('user_id', userId);
+
+    if (rightsError) throw rightsError;
+
+    const rightsMap = {};
+    (rights || []).forEach(r => {
+      rightsMap[r.module_name] = r;
+    });
+
+    res.json({
+      isSuperadmin,
+      rights: rightsMap
+    });
+  } catch (err) {
+    console.error('Fetch me/rights error:', err);
+    res.status(500).json({ message: 'Failed to fetch user permissions.' });
+  }
 });
 
 // Roles Endpoint for Frontend Select Options
@@ -504,7 +610,7 @@ app.put('/api/admin/users/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const currentUserId = req.session.user?.id;
-    const { email, firstName, lastName } = req.body;
+    const { email, firstName, lastName, roleId } = req.body;
 
     const { data: requester } = await supabase
       .from('app_user')
@@ -530,10 +636,27 @@ app.put('/api/admin/users/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ message: 'Action denied: Managers can only edit Staff accounts.' });
     }
 
+    // Build update object
     const cleanedEmail = email.trim().toLowerCase();
+    const updateData = {
+      username: cleanedEmail,
+      email: cleanedEmail,
+      first_name: firstName.trim(),
+      last_name: lastName.trim()
+    };
+
+    // Update role if passed
+    if (roleId) {
+      // Prevent non-Superadmins from assigning Superadmin role (ID 4)
+      if (!isSuperadminRole(requesterRole) && String(roleId) === '4') {
+        return res.status(403).json({ message: 'Action denied: Only Superadmins can assign the Superadmin role.' });
+      }
+      updateData.role_id = roleId;
+    }
+
     const { error: updateError } = await supabase
       .from('app_user')
-      .update({ username: cleanedEmail, email: cleanedEmail, first_name: firstName.trim(), last_name: lastName.trim() })
+      .update(updateData)
       .eq('user_id', id);
 
     if (updateError) throw updateError;
@@ -713,6 +836,99 @@ app.delete('/api/admin/users/:id', requireAuth, async (req, res) => {
   }
 });
 
+const APP_MODULES = ['Customer', 'Product', 'Human Resources', 'Sales', 'Reports'];
+
+app.get('/api/admin/users/:id/rights', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data: rights, error } = await supabase
+      .from('user_rights')
+      .select('module_name, can_create, can_read, can_update, can_delete')
+      .eq('user_id', id);
+
+    if (error) throw error;
+
+    const rightsMap = {};
+    const existingModules = new Map((rights || []).map(r => [r.module_name, r]));
+
+    APP_MODULES.forEach(mod => {
+      if (existingModules.has(mod)) {
+        rightsMap[mod] = existingModules.get(mod);
+      } else {
+        rightsMap[mod] = {
+          module_name: mod,
+          can_create: false,
+          can_read: false,
+          can_update: false,
+          can_delete: false
+        };
+      }
+    });
+
+    res.json({ userId: id, rights: rightsMap });
+  } catch (err) {
+    console.error('Fetch user rights error:', err);
+    res.status(500).json({ message: err.message || 'Failed to fetch user rights.' });
+  }
+});
+
+app.post('/api/admin/users/:id/rights', requireAuth, async (req, res) => {
+  try {
+    const currentUserId = req.session.user?.id;
+    const targetUserId = req.params.id;
+    const { updatedRights } = req.body;
+
+    if (!Array.isArray(updatedRights)) {
+      return res.status(400).json({ message: 'Invalid payload.' });
+    }
+
+    const { data: requester } = await supabase
+      .from('app_user')
+      .select('role (role_name)')
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+
+    const requesterRole = requester?.role?.role_name;
+    const isAuthorized = isSuperadminRole(requesterRole) || isManagerRole(requesterRole);
+
+    if (!isAuthorized) {
+      return res.status(403).json({ message: 'Action denied: Only Admins or Superadmins can assign user rights.' });
+    }
+
+    const { data: previousRights } = await supabase
+      .from('user_rights')
+      .select('module_name, can_create, can_read, can_update, can_delete')
+      .eq('user_id', targetUserId);
+
+    const upsertPayload = updatedRights.map(r => ({
+      user_id: targetUserId,
+      module_name: r.module_name,
+      can_create: Boolean(r.can_create),
+      can_read: Boolean(r.can_read),
+      can_update: Boolean(r.can_update),
+      can_delete: Boolean(r.can_delete),
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error: upsertError } = await supabase
+      .from('user_rights')
+      .upsert(upsertPayload, { onConflict: 'user_id, module_name' });
+
+    if (upsertError) throw upsertError;
+
+    await supabase.from('audit_log').insert({
+      actor_id: currentUserId,
+      action_type: 'UPDATE_USER_RIGHTS',
+      target_user_id: targetUserId,
+      details: { previous: previousRights || [], updated: updatedRights }
+    });
+
+    res.json({ message: 'User rights updated successfully.' });
+  } catch (err) {
+    console.error('Update user rights error:', err);
+    res.status(500).json({ message: err.message || 'Failed to update user rights.' });
+  }
+});
 // Server Initialization
 async function verifyConnection() {
   console.log("Checking connection...");

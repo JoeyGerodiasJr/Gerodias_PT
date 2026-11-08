@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Gerodias, PT.</title>
+  
+  <!-- Bootstrap 5 CSS & Inter Font -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #07381e;
+      color: #101828;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Header */
+    .top-header {
+      background-color: #ffffff;
+      border-bottom: 1px solid #eaecf0;
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      background-color: #117b44;
+      color: #ffffff;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #101828;
+      margin-right: 20px;
+    }
+
+    .nav-tabs-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-tab-item {
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      color: #344054;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-tab-item.active {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .nav-tab-item:hover:not(.active) {
+      color: #117b44;
+    }
+
+    .header-user-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-email-label {
+      font-size: 13px;
+      color: #475467;
+    }
+
+    .role-pill {
+      background-color: #d1e7dd;
+      color: #0f5132;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 4px;
+    }
+
+    .btn-header-action {
+      background-color: #ffffff;
+      border: 1px solid #d0d5dd;
+      color: #344054;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+
+    .btn-header-action:hover {
+      background-color: #f9fafb;
+      color: #101828;
+    }
+
+    /* Single Unified Content Area below Navbar */
+    .dashboard-content-wrapper {
+      flex: 1;
+      width: 100%;
+      background: linear-gradient(145deg, #0d5f35 0%, #117b44 50%, #07381e 100%);
+      padding: 36px 40px;
+      box-sizing: border-box;
+    }
+
+    .dashboard-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .dashboard-subtitle {
+      font-size: 14px;
+      color: #d0f2df;
+      margin-bottom: 32px;
+    }
+
+    /* Metric Cards Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 20px 24px;
+      box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .metric-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #117b44;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .metric-label {
+      font-size: 13px;
+      color: #344054;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    /* Browse Records Container */
+    .browse-card {
+      background: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 28px 32px;
+      box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .browse-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #101828;
+      margin-bottom: 16px;
+    }
+
+    .filter-controls {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1fr;
+      gap: 20px;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #344054;
+      margin-bottom: 6px;
+    }
+
+    .form-select-custom {
+      width: 100%;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #101828;
+      background-color: #ffffff;
+    }
+
+    .perm-hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-header">
+    <div class="brand-group">
+      <div class="brand-logo">G</div>
+      <span class="brand-name">GerodiasPt Inc.</span>
+
+      <nav class="nav-tabs-group">
+        <a href="/dashboard" class="nav-tab-item active">Dashboard</a>
+        <a href="/users" id="navUsersLink" class="nav-tab-item perm-hidden">Users and rights</a>
+      </nav>
+    </div>
+
+    <div class="header-user-actions">
+      <span id="userEmailLabel" class="user-email-label">loading...</span>
+      <span id="userRoleBadge" class="role-pill">Staff</span>
+      <button id="logoutBtn" class="btn-header-action">Log out</button>
+    </div>
+  </header>
+
+  <!-- Single Full-Width Content Area -->
+  <main class="dashboard-content-wrapper">
+    <h1 class="dashboard-title">Dashboard</h1>
+    <p class="dashboard-subtitle">Full system view. Deleted rows are shown with their status and stamp.</p>
+
+    <!-- Row 1 Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card" data-perm-module="Human Resources">
+        <div class="metric-value" id="statEmployees">32</div>
+        <p class="metric-label">Employees</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Human Resources">
+        <div class="metric-value" id="statDepartments">8</div>
+        <p class="metric-label">Departments</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Human Resources">
+        <div class="metric-value" id="statJobs">14</div>
+        <p class="metric-label">Jobs</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Human Resources">
+        <div class="metric-value" id="statSalaries">54</div>
+        <p class="metric-label">Job history and salaries</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Customer">
+        <div class="metric-value" id="statCustomers">82</div>
+        <p class="metric-label">Customers</p>
+      </div>
+    </div>
+
+    <!-- Row 2 Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card" data-perm-module="Product">
+        <div class="metric-value" id="statProducts">57</div>
+        <p class="metric-label">Products</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Product">
+        <div class="metric-value" id="statPriceHistory">79</div>
+        <p class="metric-label">Price history</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Sales">
+        <div class="metric-value" id="statSales">124</div>
+        <p class="metric-label">Sales</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Sales">
+        <div class="metric-value" id="statSalesDetails">313</div>
+        <p class="metric-label">Sales details</p>
+      </div>
+
+      <div class="metric-card" data-perm-module="Sales">
+        <div class="metric-value" id="statPayments">165</div>
+        <p class="metric-label">Payments</p>
+      </div>
+    </div>
+
+    <!-- Browse Records Container -->
+    <section class="browse-card">
+      <h2 class="browse-title">Browse records</h2>
+
+      <div class="filter-controls">
+        <div class="control-group">
+          <label for="moduleSelect">Module</label>
+          <select id="moduleSelect" class="form-select-custom">
+            <option value="">Customers</option>
+            <option value="Product">Products</option>
+            <option value="Human Resources">Human Resources</option>
+            <option value="Sales">Sales</option>
+            <option value="Reports">Reports</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="rowsSelect">Rows</label>
+          <select id="rowsSelect" class="form-select-custom">
+            <option value="all">All rows</option>
+            <option value="active">Active rows</option>
+            <option value="deleted">Deleted rows</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="showCountSelect">Show</label>
+          <select id="showCountSelect" class="form-select-custom">
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', initDashboard);
+
+    async function initDashboard() {
+      try {
+        const authRes = await fetch('/api/auth/me');
+        if (!authRes.ok) {
+          window.location.href = '/login';
+          return;
+        }
+        const authData = await authRes.json();
+        const user = authData.user || {};
+
+        document.getElementById('userEmailLabel').textContent = user.email || user.username || 'user@domain.com';
+
+        const rightsRes = await fetch('/api/auth/me/rights');
+        if (!rightsRes.ok) throw new Error('Failed to retrieve rights');
+
+        const { isSuperadmin, rights } = await rightsRes.json();
+
+        const roleBadge = document.getElementById('userRoleBadge');
+        if (isSuperadmin) {
+          roleBadge.textContent = 'Superadmin';
+          document.getElementById('navUsersLink').classList.remove('perm-hidden');
+          document.getElementById('navSettingsLink').classList.remove('perm-hidden');
+        } else {
+          roleBadge.textContent = 'Staff';
+        }
+
+        document.querySelectorAll('[data-perm-module]').forEach(el => {
+          const modName = el.getAttribute('data-perm-module');
+          const modRights = rights[modName];
+
+          const hasAccess = isSuperadmin || Boolean(modRights && modRights.can_read);
+          if (!hasAccess) {
+            el.classList.add('perm-hidden');
+          }
+        });
+
+      } catch (err) {
+        console.error('Failed initializing dashboard header permissions:', err);
+      }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    });
+  </script>
+</body>
+</html>
