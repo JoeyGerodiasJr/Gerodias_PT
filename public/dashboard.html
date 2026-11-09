@@ -355,13 +355,15 @@
         const rightsRes = await fetch('/api/auth/me/rights');
         if (!rightsRes.ok) throw new Error('Failed to retrieve rights');
 
-        const { isSuperadmin, rights } = await rightsRes.json();
+        const { isSuperadmin, isAdmin, rights } = await rightsRes.json();
 
         const roleBadge = document.getElementById('userRoleBadge');
         if (isSuperadmin) {
           roleBadge.textContent = 'Superadmin';
           document.getElementById('navUsersLink').classList.remove('perm-hidden');
-          document.getElementById('navSettingsLink').classList.remove('perm-hidden');
+        } else if (isAdmin) {
+          roleBadge.textContent = 'Admin';
+          document.getElementById('navUsersLink').classList.remove('perm-hidden');
         } else {
           roleBadge.textContent = 'Staff';
         }

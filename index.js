@@ -120,6 +120,28 @@ function isManagerRole(roleName) {
   return name.includes('manager') || (name.includes('admin') && !name.includes('super'));
 }
 
+async function requireUserManagementAccess(req, res, next) {
+  try {
+    const { data: requester, error } = await supabase
+      .from('app_user')
+      .select('role (role_name)')
+      .eq('user_id', req.session.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const roleName = requester?.role?.role_name;
+    if (!isSuperadminRole(roleName) && !isManagerRole(roleName)) {
+      return res.status(403).json({ message: 'Access denied: Only Admins or Superadmins can access User Management.' });
+    }
+
+    return next();
+  } catch (err) {
+    console.error('User management access check error:', err);
+    return res.status(500).json({ message: 'Server error checking user management access.' });
+  }
+}
+
 function isStaffRole(roleName, roleId) {
   if (roleId && (Number(roleId) === 6 || Number(roleId) === 14)) {
     return true;
@@ -173,7 +195,7 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "login.ht
 app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
-app.get('/users', (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
+app.get('/users', requireAuth, requireUserManagementAccess, (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
 app.get('/setPassword', (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
 app.get('/forgotPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html')));
 app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
@@ -466,6 +488,7 @@ app.get('/api/auth/me/rights', requireAuth, async (req, res) => {
 
     res.json({
       isSuperadmin,
+      isAdmin: isManagerRole(roleName),
       rights: rightsMap
     });
   } catch (err) {
@@ -475,6 +498,8 @@ app.get('/api/auth/me/rights', requireAuth, async (req, res) => {
 });
 
 // Roles Endpoint for Frontend Select Options
+app.use('/api/admin', requireAuth, requireUserManagementAccess);
+
 app.get('/api/admin/roles', requireAuth, async (req, res) => {
   try {
     const { data: roles, error } = await supabase
