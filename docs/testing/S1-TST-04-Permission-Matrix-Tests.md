@@ -4,7 +4,7 @@
 **Task ID:** S1-TST-04  
 **Prepared by:** Hazel Espiso  
 **Role:** Test Engineer  
-**Status:** Draft
+**Status:** Progress
 
 ## 1. Objective
 
