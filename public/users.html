@@ -122,6 +122,11 @@ body {
   color: #c5221f;
 }
 
+.status-pending {
+  background-color: #fff4e5;
+  color: #9a6700;
+}
+
 /* Action Buttons */
 .btn-action-edit {
   background-color: #ffffff;
@@ -136,6 +141,21 @@ body {
 
 .btn-action-edit:hover {
   background-color: #f9fafb;
+}
+
+.btn-action-approve {
+  background-color: #ffffff;
+  border: 1px solid #a6f4c5;
+  color: #079455;
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-action-approve:hover {
+  background-color: #ecfdf3;
 }
 
 .btn-action-block,
@@ -242,6 +262,78 @@ body {
   min-width: 95px;
 }
 
+.perm-card {
+  border: 1px solid #eaecf0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.perm-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.perm-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #101828;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.perm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 24px;
+  padding-left: 28px;
+}
+
+.perm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #344054;
+}
+
+.perm-item.disabled-label {
+  color: #98a2b3;
+}
+
+.perm-card .form-check-input {
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  cursor: pointer;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 4px;
+}
+
+.perm-card .form-check-input:checked {
+  background-color: #117b44 !important;
+  border-color: #117b44 !important;
+}
+
+.btn-quick-toggle {
+  background-color: #f2f4f7;
+  border: none;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.btn-quick-toggle:hover {
+  background-color: #e4e7ec;
+  color: #101828;
+}
+
 /* Modal Overlay */
 .modal-backdrop-custom {
   position: fixed;
@@ -341,40 +433,35 @@ body {
 
 <!-- Rights Management Modal -->
 <div id="rightsModal" class="modal-backdrop-custom hidden">
-  <div class="bg-white p-3 rounded-4 shadow-lg" style="width: 100%; max-width: 540px;">
+  <div class="bg-white p-4 rounded-4 shadow-lg" style="width: 100%; max-width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+    
+    <!-- Modal Header -->
     <div class="d-flex justify-content-between align-items-center mb-1">
       <h5 class="fw-bold mb-0">Manage User Rights</h5>
       <button type="button" id="closeRightsModalBtn" class="btn-close" aria-label="Close"></button>
     </div>
-    <p class="text-secondary small mb-3" id="rightsTargetUserText" style="font-size: 12px;">Configuring permissions</p>
+    <p class="text-secondary small mb-3" id="rightsTargetUserText" style="font-size: 13px;">Configuring permissions</p>
     
     <div id="rightsAlert" class="alert alert-danger py-2 small hidden"></div>
 
-    <form id="rightsForm">
+    <form id="rightsForm" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
       <input type="hidden" id="rightsTargetUserId">
-      <div class="table-responsive mb-3 border rounded-3">
-        <table class="table align-middle mb-0" style="font-size: 13px;">
-          <thead class="table-light small text-uppercase">
-            <tr>
-              <th class="text-start" style="padding-left: 20px; width: 30%;">Module</th>
-              <th class="text-center" style="width: 13%;">Create</th>
-              <th class="text-center" style="width: 13%;">Read</th>
-              <th class="text-center" style="width: 13%;">Update</th>
-              <th class="text-center" style="width: 13%;">Delete</th>
-            </tr>
-          </thead>
-          <tbody id="rightsTableBody"></tbody>
-        </table>
+      
+      <!-- Scrollable Module Cards Section -->
+      <div id="rightsCardsContainer" class="pe-2 mb-3" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Dynamically Populated Cards via JS -->
       </div>
 
-      <div class="d-flex justify-content-between align-items-center pt-1">
+      <!-- Footer Buttons -->
+      <div class="d-flex justify-content-between align-items-center pt-2 border-top">
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size: 12px;" onclick="toggleGlobalRights(true)">Select All</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size: 12px;" onclick="toggleGlobalRights(false)">Deselect All</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-3" style="font-size: 12.5px;" onclick="toggleAllGlobalRights(true)">Select All</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-3" style="font-size: 12.5px;" onclick="toggleAllGlobalRights(false)">Deselect All</button>
         </div>
+
         <div class="d-flex gap-2">
           <button type="button" id="cancelRightsBtn" class="btn btn-sm btn-outline-secondary py-1 px-3" style="font-size: 13px;">Cancel</button>
-          <button type="submit" id="saveRightsBtn" class="btn btn-sm btn-add-user py-1 px-3" style="font-size: 13px;">Save Rights</button>
+          <button type="submit" id="saveRightsBtn" class="btn btn-sm btn-add-user py-1 px-4" style="font-size: 13px;">Save Rights</button>
         </div>
       </div>
     </form>
@@ -384,6 +471,77 @@ body {
 <script>
 let usersData = [];
 const APP_MODULES = ['Customer', 'Product', 'Human Resources', 'Sales', 'Reports'];
+
+const RIGHTS_SCHEMA = [
+  {
+    moduleKey: 'Customer Management',
+    dbModuleName: 'Customer',
+    label: 'Customer Management',
+    permissions: [
+      { key: 'can_add_customer', label: 'Add Customer' },
+      { key: 'can_edit_customer', label: 'Edit Customer' },
+      { key: 'can_delete_customer', label: 'Delete Customer' }
+    ]
+  },
+  {
+    moduleKey: 'Product Management',
+    dbModuleName: 'Product',
+    label: 'Product Management',
+    permissions: [
+      { key: 'can_add_product', label: 'Add Product' },
+      { key: 'can_edit_product', label: 'Edit Product' },
+      { key: 'can_delete_product', label: 'Delete Product' },
+      { key: 'can_add_price', label: 'Add Price' },
+      { key: 'can_edit_price', label: 'Edit Price' },
+      { key: 'can_delete_price', label: 'Delete Price' }
+    ]
+  },
+  {
+    moduleKey: 'Human Resources',
+    label: 'Human Resources',
+    permissions: [
+      { key: 'can_add_job', label: 'Add Job' },
+      { key: 'can_edit_job', label: 'Edit Job' },
+      { key: 'can_delete_job', label: 'Delete Job' },
+      { key: 'can_add_department', label: 'Add Department' },
+      { key: 'can_edit_department', label: 'Edit Department' },
+      { key: 'can_delete_department', label: 'Delete Department' },
+      { key: 'can_add_employee', label: 'Add Employee' },
+      { key: 'can_edit_employee', label: 'Edit Employee' },
+      { key: 'can_delete_employee', label: 'Delete Employee' },
+      { key: 'can_view_job_history', label: 'View Job History' },
+      { key: 'can_add_job_history', label: 'Add Job History' },
+      { key: 'can_edit_job_history', label: 'Edit Job History' },
+      { key: 'can_delete_job_history', label: 'Delete Job History' }
+    ]
+  },
+  {
+    moduleKey: 'Sales',
+    label: 'Sales',
+    permissions: [
+      { key: 'can_add_sale', label: 'Add Sale' },
+      { key: 'can_edit_sale', label: 'Edit Sale' },
+      { key: 'can_delete_sale', label: 'Delete Sale' },
+      { key: 'can_view_sale_details', label: 'View Sale Details' },
+      { key: 'can_add_sale_detail', label: 'Add Sale Detail' },
+      { key: 'can_edit_sale_detail', label: 'Edit Sale Detail' },
+      { key: 'can_delete_sale_detail', label: 'Delete Sale Detail' }
+    ]
+  },
+  {
+    moduleKey: 'Reports',
+    label: 'Reports',
+    permissions: [
+      { key: 'can_view_top_customers', label: 'Top Customers' },
+      { key: 'can_view_product_master_list', label: 'Product Master List' },
+      { key: 'can_view_top_products', label: 'Top Products' },
+      { key: 'can_view_active_employees', label: 'Active Employees' },
+      { key: 'can_view_all_employees', label: 'All Employees' },
+      { key: 'can_view_employee_job_history', label: 'Employee Job History' },
+      { key: 'can_view_top_sales', label: 'Top Sales' }
+    ]
+  }
+];
 
 const tableBody = document.getElementById('userTableBody');
 const userModal = document.getElementById('userModal');
@@ -435,55 +593,59 @@ async function loadCurrentUserProfile() {
 function renderTable(users) {
   const tbody = document.getElementById('userTableBody');
   if (!tbody) return;
-
   if (!users || users.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No users found.</td></tr>`;
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No users found.</td></tr>';
     return;
   }
 
   tbody.innerHTML = users.map(user => {
     const rawRole = user.roleName || user.role_name || 'User';
     const displayRoleName = rawRole === 'Standard User' ? 'User' : rawRole;
-
     let badgeClass = 'role-badge-user';
     if (displayRoleName === 'Superadmin') badgeClass = 'role-badge-superadmin';
     else if (displayRoleName === 'Administrator' || displayRoleName === 'Admin') badgeClass = 'role-badge-admin';
     else if (displayRoleName === 'Staff') badgeClass = 'role-badge-staff';
 
     const roleContent = `<span class="role-badge-solid ${badgeClass}">${escapeHtml(displayRoleName)}</span>`;
+    const userStatus = String(user.status || '').toLowerCase();
+    const statusBadge = user.isBlocked || userStatus === 'rejected' || userStatus === 'blocked'
+      ? '<span class="status-pill status-blocked">Blocked</span>'
+      : userStatus === 'pending'
+        ? '<span class="status-pill status-pending">Pending</span>'
+        : '<span class="status-pill status-active">Active</span>';
 
-    const statusBadge = user.isBlocked
-      ? `<span class="status-pill status-blocked">Blocked</span>`
-      : `<span class="status-pill status-active">Active</span>`;
-
-    const editBtn = user.canEdit
-      ? `<button class="btn-action-edit" onclick="openEditModal('${user.id}')">Edit</button>`
-      : '';
-
-    const rightsBtn = user.canEdit
+    // Show "Rights" button ONLY if the role is 'User' (or roleId is 14)
+    const isUserRole = displayRoleName === 'User' || String(user.roleId || user.role_id) === '14';
+    
+    const rightsBtn = (!user.isPending && user.canEdit && isUserRole)
       ? `<button class="btn-action-rights" onclick="openRightsModal('${user.id}', '${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}')">Rights</button>`
       : '';
-
-    const blockBtn = user.canBlock
-      ? `<button class="${user.isBlocked ? 'btn-action-unblock' : 'btn-action-block'}" onclick="toggleBlock('${user.id}', ${!user.isBlocked})">
-           ${user.isBlocked ? 'Unblock' : 'Block'}
-         </button>`
+    const editBtn = (!user.isPending && user.canEdit)
+      ? `<button class="btn-action-edit" onclick="openEditModal('${user.id}')">Edit</button>`
       : '';
-
-    const deleteBtn = user.canDelete
+    const pendingActions = user.isPending && user.canBlock
+      ? `<button class="btn-action-approve" onclick="approveUser('${user.id}')">Approve</button>
+         <button class="btn-action-block" onclick="rejectUser('${user.id}')">Reject</button>`
+      : '';
+    const blockBtn = !user.isPending && user.canBlock
+      ? `<button class="${user.isBlocked ? 'btn-action-unblock' : 'btn-action-block'}" onclick="toggleBlock('${user.id}', ${!user.isBlocked})">${user.isBlocked ? 'Unblock' : 'Block'}</button>`
+      : '';
+    const deleteBtn = (!user.isPending && user.canDelete)
       ? `<button class="btn-action-delete" onclick="deleteUser('${user.id}')">Delete</button>`
       : '';
 
-    const actionsList = [rightsBtn, editBtn, blockBtn, deleteBtn].filter(Boolean).join('');
-    const actionsContent = actionsList 
-      ? `<div class="d-flex align-items-center gap-2">${actionsList}</div>` 
-      : `<span class="text-muted small">No actions available</span>`;
+    const actionsList = [rightsBtn, editBtn, pendingActions, blockBtn, deleteBtn].filter(Boolean).join('');
+    const actionsContent = actionsList
+      ? `<div class="d-flex align-items-center gap-2">${actionsList}</div>`
+      : '<span class="text-muted small">No actions available</span>';
 
     return `
       <tr>
-        <td class="fw-bold align-middle" style="color: #101828;">
-          ${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)} 
-          ${user.isSelf ? '<span class="badge bg-secondary-subtle text-secondary ms-1">You</span>' : ''}
+        <td class="align-middle" style="color: #101828;">
+          <div class="d-inline-flex align-items-center gap-2 fw-bold">
+            <span>${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}</span>
+            ${user.isSelf ? '<span class="badge bg-secondary-subtle text-secondary">You</span>' : ''}
+          </div>
         </td>
         <td class="align-middle text-truncate" style="color: #344054; max-width: 180px;" title="${escapeHtml(user.email)}">
           ${escapeHtml(user.email)}
@@ -572,35 +734,145 @@ window.openRightsModal = async function(userId, userName) {
   document.getElementById('rightsTargetUserId').value = userId;
   document.getElementById('rightsTargetUserText').textContent = `Configuring permissions for ${userName}`;
   rightsAlert.classList.add('hidden');
-
+  
   try {
     const res = await fetch(`/api/admin/users/${userId}/rights`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to fetch rights');
-
-    renderRightsTable(data.rights);
+    
+    // Pass normalized user rights payload
+    renderRightsCards(data.rights || data.updatedRights || data);
+    rightsModal.classList.remove('hidden');
+  } catch (err) {
+    alert(err.message || 'Error loading user rights');
+  }
+};window.openRightsModal = async function(userId, userName) {
+  document.getElementById('rightsTargetUserId').value = userId;
+  document.getElementById('rightsTargetUserText').textContent = `Configuring permissions for ${userName}`;
+  rightsAlert.classList.add('hidden');
+  
+  try {
+    const res = await fetch(`/api/admin/users/${userId}/rights`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch rights');
+    
+    // Pass normalized user rights payload
+    renderRightsCards(data.rights || data.updatedRights || data);
     rightsModal.classList.remove('hidden');
   } catch (err) {
     alert(err.message || 'Error loading user rights');
   }
 };
 
-function renderRightsTable(rightsMap = {}) {
-  const tbody = document.getElementById('rightsTableBody');
-  tbody.innerHTML = APP_MODULES.map(mod => {
-    const r = rightsMap[mod] || { can_create: false, can_read: false, can_update: false, can_delete: false };
+// Render Cards Layout with Full Key Fallbacks
+function renderRightsCards(userRights = []) {
+  const container = document.getElementById('rightsCardsContainer');
+  const rightsMap = {};
+  const rightsList = Array.isArray(userRights)
+    ? userRights
+    : userRights && typeof userRights === 'object'
+      ? Object.values(userRights)
+      : [];
+  
+  rightsList.forEach(item => {
+    const rawKey = item.module_name || item.moduleKey || item.module || item.name || '';
+    const cleanKey = rawKey.replace(' Management', '').trim().toLowerCase();
+    if (cleanKey && !rightsMap[cleanKey]) rightsMap[cleanKey] = item;
+  });
+
+  container.innerHTML = RIGHTS_SCHEMA.map(mod => {
+    const lookupKey = mod.moduleKey.replace(' Management', '').trim().toLowerCase();
+    const modData = rightsList.find(item => item.module_name === mod.dbModuleName) || rightsMap[lookupKey];
+    const granularPermissions = modData?.granular_permission;
+    const hasGranularPermissions = granularPermissions !== null && typeof granularPermissions === 'object' && !Array.isArray(granularPermissions);
+
+    // Module master toggle is active ONLY if explicitly enabled in DB
+    const isModuleActive = modData ? (modData.enabled === true || modData.enabled === 1 || modData.enabled === '1') : false;
+
+    const subPermsHtml = mod.permissions.map(perm => {
+      // Sub-checkbox is checked ONLY if module is active AND exact permission property key is true
+      const pk = perm.key.toLowerCase();
+      const isChecked = isModuleActive && modData ? (
+        hasGranularPermissions ? granularPermissions[perm.key] === true :
+        typeof modData[perm.key] === 'boolean' ? modData[perm.key] :
+        pk.includes('add') || pk.includes('create') ? Boolean(modData.can_create) :
+        pk.includes('edit') || pk.includes('update') ? Boolean(modData.can_update) :
+        pk.includes('delete') ? Boolean(modData.can_delete) :
+        Boolean(modData.can_read)
+      ) : false;
+
+      return `
+        <label class="perm-item ${!isModuleActive ? 'disabled-label' : ''}">
+          <input type="checkbox" 
+                 class="form-check-input sub-perm-cb" 
+                 data-perm-key="${perm.key}"
+                 ${isChecked ? 'checked' : ''} 
+                 ${!isModuleActive ? 'disabled' : ''}>
+          <span>${escapeHtml(perm.label)}</span>
+        </label>
+      `;
+    }).join('');
+
     return `
-      <tr data-module="${mod}">
-        <td class="text-start align-middle fw-semibold text-dark" style="padding-left: 20px;">${escapeHtml(mod)}</td>
-        <td class="text-center align-middle"><input type="checkbox" class="form-check-input cb-create" ${r.can_create ? 'checked' : ''}></td>
-        <td class="text-center align-middle"><input type="checkbox" class="form-check-input cb-read" ${r.can_read ? 'checked' : ''}></td>
-        <td class="text-center align-middle"><input type="checkbox" class="form-check-input cb-update" ${r.can_update ? 'checked' : ''}></td>
-        <td class="text-center align-middle"><input type="checkbox" class="form-check-input cb-delete" ${r.can_delete ? 'checked' : ''}></td>
-        <td class="text-center align-middle" style="padding-right: 16px;"></td>
-      </tr>
+      <div class="perm-card" data-module="${mod.moduleKey}">
+        <div class="perm-card-header">
+          <label class="perm-card-title mb-0">
+            <input type="checkbox" class="form-check-input master-module-cb" ${isModuleActive ? 'checked' : ''} onchange="handleMasterToggle(this)">
+            <span>${escapeHtml(mod.label)}</span>
+          </label>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-quick-toggle" onclick="toggleModuleGroup('${mod.moduleKey}', true)">All</button>
+            <button type="button" class="btn btn-quick-toggle" onclick="toggleModuleGroup('${mod.moduleKey}', false)">None</button>
+          </div>
+        </div>
+        <div class="perm-grid">
+          ${subPermsHtml}
+        </div>
+      </div>
     `;
   }).join('');
 }
+
+window.handleMasterToggle = function(masterCb) {
+  const card = masterCb.closest('.perm-card');
+  const subCbs = card.querySelectorAll('.sub-perm-cb');
+  const labels = card.querySelectorAll('.perm-item');
+
+  subCbs.forEach(cb => {
+    cb.disabled = !masterCb.checked;
+    if (!masterCb.checked) cb.checked = false;
+  });
+
+  labels.forEach(lbl => {
+    if (masterCb.checked) {
+      lbl.classList.remove('disabled-label');
+    } else {
+      lbl.classList.add('disabled-label');
+    }
+  });
+};
+
+window.toggleModuleGroup = function(moduleKey, state) {
+  const card = document.querySelector(`.perm-card[data-module="${moduleKey}"]`);
+  if (!card) return;
+
+  const masterCb = card.querySelector('.master-module-cb');
+  if (state && !masterCb.checked) {
+    masterCb.checked = true;
+    handleMasterToggle(masterCb);
+  }
+
+  card.querySelectorAll('.sub-perm-cb').forEach(cb => {
+    if (!cb.disabled) cb.checked = state;
+  });
+};
+
+window.toggleAllGlobalRights = function(state) {
+  RIGHTS_SCHEMA.forEach(mod => toggleModuleGroup(mod.moduleKey, state));
+};
+
+if (closeRightsModalBtn) closeRightsModalBtn.addEventListener('click', () => rightsModal.classList.add('hidden'));
+if (cancelRightsBtn) cancelRightsBtn.addEventListener('click', () => rightsModal.classList.add('hidden'));
 
 window.toggleModuleRow = function(moduleName, state) {
   const row = document.querySelector(`tr[data-module="${moduleName}"]`);
@@ -616,6 +888,7 @@ window.toggleGlobalRights = function(state) {
 if (closeRightsModalBtn) closeRightsModalBtn.addEventListener('click', () => rightsModal.classList.add('hidden'));
 if (cancelRightsBtn) cancelRightsBtn.addEventListener('click', () => rightsModal.classList.add('hidden'));
 
+// Form Submit Handler — Sends direct boolean states without artificial can_read triggers
 if (rightsForm) {
   rightsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -623,15 +896,23 @@ if (rightsForm) {
     const saveBtn = document.getElementById('saveRightsBtn');
     rightsAlert.classList.add('hidden');
 
-    const updatedRights = APP_MODULES.map(mod => {
-      const row = document.querySelector(`tr[data-module="${mod}"]`);
-      return {
-        module_name: mod,
-        can_create: row.querySelector('.cb-create').checked,
-        can_read: row.querySelector('.cb-read').checked,
-        can_update: row.querySelector('.cb-update').checked,
-        can_delete: row.querySelector('.cb-delete').checked
+    const updatedRights = RIGHTS_SCHEMA.map(mod => {
+      const card = document.querySelector(`.perm-card[data-module="${mod.moduleKey}"]`);
+      const isEnabled = card ? card.querySelector('.master-module-cb').checked : false;
+
+      const modPerms = {
+        module_name: mod.dbModuleName || mod.moduleKey,
+        moduleKey: mod.moduleKey,
+        enabled: isEnabled
       };
+
+      // Save exact checkbox status for every permission
+      mod.permissions.forEach(p => {
+        const cb = card ? card.querySelector(`[data-perm-key="${p.key}"]`) : null;
+        modPerms[p.key] = isEnabled && cb ? cb.checked : false;
+      });
+
+      return modPerms;
     });
 
     saveBtn.disabled = true;
@@ -656,6 +937,30 @@ if (rightsForm) {
     }
   });
 }
+
+window.approveUser = async function(id) {
+  if (!confirm('Approve this pending user account?')) return;
+  try {
+    const res = await fetch(`/api/admin/users/${id}/approve`, { method: 'PATCH' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Approval failed.');
+    await loadUsers();
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+window.rejectUser = async function(id) {
+  if (!confirm('Reject this pending user account?')) return;
+  try {
+    const res = await fetch(`/api/admin/users/${id}/reject`, { method: 'PATCH' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Rejection failed.');
+    await loadUsers();
+  } catch (err) {
+    alert(err.message);
+  }
+};
 
 window.toggleBlock = async function(id, shouldBlock) {
   if (!confirm(`Are you sure you want to ${shouldBlock ? 'block' : 'unblock'} this user?`)) return;

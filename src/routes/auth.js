@@ -32,6 +32,7 @@ router.post("/register", async (req, res) => {
     password_hash: "!pending-no-password",  // NOT NULL; not a valid hash, so it can never log in
     full_name: fullName,
     email: email,
+    status: "pending",
   });
 
   if (error) {
