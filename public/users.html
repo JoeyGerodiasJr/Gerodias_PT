@@ -470,6 +470,7 @@ body {
 
 <script>
 let usersData = [];
+let currentUserProfile = null;
 const APP_MODULES = ['Customer', 'Product', 'Human Resources', 'Sales', 'Reports'];
 
 const RIGHTS_SCHEMA = [
@@ -573,12 +574,32 @@ async function loadUsers() {
   }
 }
 
+function updateRoleSelectVisibility() {
+  const roleName = String(currentUserProfile?.roleName || '').toLowerCase().trim();
+  const isSuperadmin = roleName.includes('super');
+  const superadminOpt = document.querySelector('#userRoleSelect option[value="4"]');
+  if (superadminOpt) {
+    if (isSuperadmin) {
+      superadminOpt.hidden = false;
+      superadminOpt.disabled = false;
+      superadminOpt.style.display = '';
+    } else {
+      superadminOpt.hidden = true;
+      superadminOpt.disabled = true;
+      superadminOpt.style.display = 'none';
+    }
+  }
+}
+
 // Fetch and display current logged-in user profile in navbar
 async function loadCurrentUserProfile() {
   try {
     const res = await fetch('/api/auth/me');
     const data = await res.json();
     if (!res.ok) return;
+
+    currentUserProfile = data.user;
+    updateRoleSelectVisibility();
 
     // Display Last Name (or fall back to Email) in the navbar display element
     const userNavDisplay = document.getElementById('userNavDisplay'); // Update ID to match your navbar element
@@ -663,6 +684,8 @@ window.openEditModal = function(id) {
   const user = usersData.find(u => String(u.id) === String(id));
   if (!user) return;
 
+  updateRoleSelectVisibility();
+
   document.getElementById('userId').value = user.id;
   document.getElementById('firstName').value = user.firstName || '';
   document.getElementById('lastName').value = user.lastName || '';
@@ -720,6 +743,12 @@ if (openAddModalBtn) {
     document.getElementById('userId').value = '';
     modalTitle.textContent = 'Add New User';
     modalError.textContent = '';
+    updateRoleSelectVisibility();
+    const roleSelect = document.getElementById('userRoleSelect');
+    if (roleSelect) {
+      const isSuperadmin = String(currentUserProfile?.roleName || '').toLowerCase().includes('super');
+      roleSelect.value = isSuperadmin ? '4' : '14';
+    }
     userModal.classList.remove('hidden');
   });
 }
