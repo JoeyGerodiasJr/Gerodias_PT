@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>User Management GerodiasPT Inc.</title>
+<title>Hope, Inc. - Users Management</title>
 <!-- Bootstrap 5 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <!-- Inter Font -->
@@ -113,13 +113,15 @@ body {
 }
 
 .status-active {
-  background-color: #e6f4ea;
-  color: #137333;
+  background-color: #a1d99b;
+  border: 1px solid #74c476;
+  color: #00441b;
 }
 
 .status-blocked {
-  background-color: #fce8e6;
-  color: #c5221f;
+  background-color: #fecaca;
+  border: 1px solid #f87171;
+  color: #991b1b;
 }
 
 .status-pending {
@@ -129,9 +131,9 @@ body {
 
 /* Action Buttons */
 .btn-action-edit {
-  background-color: #ffffff;
-  border: 1px solid #d0d5dd;
-  color: #344054;
+  background-color: #fff4e5;
+  border: 1px solid #f0d7b5;
+  color: #493b2a;
   border-radius: 6px;
   padding: 5px 14px;
   font-size: 13px;
@@ -140,7 +142,7 @@ body {
 }
 
 .btn-action-edit:hover {
-  background-color: #f9fafb;
+  background-color: #f5e3cb;
 }
 
 .btn-action-approve {
@@ -175,9 +177,9 @@ body {
 }
 
 .btn-action-unblock {
-  background-color: #ffffff;
-  border: 1px solid #a6f4c5;
-  color: #079455;
+  background-color: #e6f4ea;
+  border: 1px solid #badbcc;
+  color: #137333;
   border-radius: 6px;
   padding: 5px 14px;
   font-size: 13px;
@@ -186,13 +188,13 @@ body {
 }
 
 .btn-action-unblock:hover {
-  background-color: #ecfdf3;
+  background-color: #d5ebdc;
 }
 
 .btn-action-rights {
-  background-color: #ffffff;
-  border: 1px solid #117b44;
-  color: #117b44;
+  background-color: #d1d5db;
+  border: 1px solid #aab4c0;
+  color: #1f2937;
   border-radius: 6px;
   padding: 5px 14px;
   font-size: 13px;
@@ -201,8 +203,7 @@ body {
 }
 
 .btn-action-rights:hover {
-  background-color: #f0fdf4;
-  color: #0d6236;
+  background-color: #e5e7eb;
 }
 
 /* Rights Modal Custom Checkboxes */
@@ -231,9 +232,9 @@ body {
 }
 
 .role-badge-superadmin {
-  background-color: #d1e7dd;
-  color: #0f5132;
-  border: 1px solid #badbcc;
+  background-color: #ffd700;
+  color: #4a3900;
+  border: 1px solid #d4af37;
   padding: 3px 10px;
   min-width: 95px;
 }
@@ -247,9 +248,9 @@ body {
 }
 
 .role-badge-staff {
-  background-color: #fde68a;
-  color: #78350f;
-  border: 1px solid #fcd34d;
+  background-color: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #c4b5fd;
   padding: 3px 10px;
   min-width: 95px;
 }
@@ -351,47 +352,958 @@ body {
 .hidden {
   display: none !important;
 }
+
+:root {
+  --midnight-black: #02070a;
+  --electric-blue: #0297de;
+  --cantaloupe-orange: #fc734d;
+  --glass-bg: rgba(4, 15, 24, 0.78);
+  --border-color: rgba(2, 151, 222, 0.25);
+}
+
+body {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--midnight-black);
+  background-image:
+    radial-gradient(at 12% 10%, rgba(2, 151, 222, 0.16), transparent 50%),
+    radial-gradient(at 88% 90%, rgba(252, 115, 77, 0.1), transparent 50%),
+    linear-gradient(rgba(2, 151, 222, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(2, 151, 222, 0.045) 1px, transparent 1px),
+    linear-gradient(135deg, #02070a 0%, #011626 100%);
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px, 100% 100%;
+  background-attachment: fixed;
+  color: #fff;
+}
+
+sidebar {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: 78px;
+  height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 22px 14px;
+  border-right: 1px solid var(--border-color);
+  background: linear-gradient(180deg, #02070a 0%, #010a10 100%);
+  box-shadow: 6px 0 30px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  transition: width 0.3s ease;
+  white-space: nowrap;
+}
+
+sidebar:hover,
+sidebar:focus-within {
+  width: 275px;
+}
+
+.sidebar-top {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px;
+}
+
+.brand-logo-box {
+  display: flex;
+  min-width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--electric-blue);
+  box-shadow: 0 0 16px rgba(2, 151, 222, 0.5);
+  color: var(--midnight-black);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.brand-text-wrap,
+.nav-section-title,
+.nav-label,
+.search-input,
+.user-info {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+sidebar:hover .brand-text-wrap,
+sidebar:focus-within .brand-text-wrap,
+sidebar:hover .nav-section-title,
+sidebar:focus-within .nav-section-title,
+sidebar:hover .nav-label,
+sidebar:focus-within .nav-label,
+sidebar:hover .search-input,
+sidebar:focus-within .search-input,
+sidebar:hover .user-info,
+sidebar:focus-within .user-info {
+  opacity: 1;
+}
+
+.brand-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.brand-subtitle {
+  color: var(--electric-blue);
+  font-size: 11px;
+}
+
+.sidebar-search {
+  display: flex;
+  height: 42px;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-search:focus-within {
+  border-color: var(--electric-blue);
+  background: rgba(2, 151, 222, 0.1);
+}
+
+.search-icon {
+  min-width: 20px;
+  text-align: center;
+}
+
+.search-mark {
+  position: relative;
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.search-mark::before {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  content: '';
+}
+
+.search-mark::after {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 5px;
+  height: 1.5px;
+  transform: rotate(45deg);
+  transform-origin: left center;
+  background: currentColor;
+  content: '';
+}
+
+.search-input {
+  width: 170px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.nav-menu {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-menu::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-section-title {
+  padding: 12px 10px 4px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 10px;
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-item.role-hidden {
+  display: none !important;
+}
+
+.nav-item:hover,
+.nav-item.active {
+  background: rgba(2, 151, 222, 0.16);
+  color: #fff;
+}
+
+.nav-item.active {
+  border-left-color: var(--cantaloupe-orange);
+}
+
+.nav-item .icon {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--electric-blue);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.nav-item.active .icon {
+  background: rgba(2, 151, 222, 0.22);
+  color: #fff;
+}
+
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.user-avatar {
+  display: flex;
+  min-width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--electric-blue);
+  color: var(--midnight-black);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.user-name {
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  color: var(--electric-blue);
+  font-size: 11px;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 13px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 92, 92, 0.08);
+  color: #ff8b8b;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 92, 92, 0.2);
+}
+
+.main-container {
+  display: flex;
+  width: calc(100% - 78px);
+  max-width: none;
+  min-width: 0;
+  min-height: 100vh;
+  flex: 1;
+  flex-direction: column;
+  margin: 0 0 0 78px;
+  padding: 0;
+}
+
+.dashboard-header {
+  position: sticky;
+  z-index: 150;
+  top: 0;
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 40px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(2, 7, 10, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.breadcrumb {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+}
+
+.top-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-user-name {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dashboard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 34px 40px;
+}
+
+.hero-banner {
+  position: relative;
+  overflow: hidden;
+  padding: 30px 36px;
+  border: 1px solid rgba(2, 151, 222, 0.35);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #011a2c 0%, #05436e 55%, #0278b3 100%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35), 0 0 30px rgba(2, 151, 222, 0.12);
+  color: #fff;
+}
+
+.hero-banner::after {
+  position: absolute;
+  right: -80px;
+  bottom: -170px;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(252, 115, 77, 0.28), transparent 70%);
+  content: '';
+  pointer-events: none;
+}
+
+.hero-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-banner h1 {
+  margin: 0 0 7px;
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.hero-banner p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+}
+
+.table-card {
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: var(--glass-bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.card-top-row h3 {
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.card-top-row .subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.table-search-box {
+  display: flex;
+  width: min(280px, 100%);
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.table-search-box:focus-within {
+  border-color: var(--electric-blue);
+  box-shadow: 0 0 0 3px rgba(2, 151, 222, 0.2);
+}
+
+.table-search-box input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+}
+
+.table-search-box input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+#usersTable {
+  width: 100%;
+  min-width: 720px;
+  margin: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #fff;
+  font-size: 13px;
+}
+
+#usersTable th:nth-child(1) { width: 18%; }
+#usersTable th:nth-child(2) { width: 25%; }
+#usersTable th:nth-child(3) { width: 14%; }
+#usersTable th:nth-child(4) { width: 14%; }
+#usersTable th:nth-child(5) { width: 29%; }
+
+#usersTable th {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(2, 151, 222, 0.35);
+  background: rgba(2, 151, 222, 0.12);
+  color: var(--electric-blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.65px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#usersTable td {
+  padding: 15px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  vertical-align: middle;
+}
+
+#usersTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+#usersTable tbody tr:hover td {
+  background: rgba(2, 151, 222, 0.07);
+}
+
+#usersTable .user-name-cell {
+  color: var(--cantaloupe-orange);
+  font-weight: 650;
+}
+
+#usersTable .user-name-layout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#usersTable .badge-you {
+  border: 1px solid rgba(2, 151, 222, 0.35);
+  background: rgba(2, 151, 222, 0.12);
+  color: var(--electric-blue);
+}
+
+#usersTable .email-cell {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.68);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-empty {
+  padding: 28px !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  text-align: center;
+}
+
+.no-actions {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.action-buttons button {
+  padding-right: 10px;
+  padding-left: 10px;
+  white-space: nowrap;
+}
+
+.btn-add-user {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border: 1px solid rgba(2, 151, 222, 0.5);
+  border-radius: 10px;
+  background: rgba(2, 151, 222, 0.18);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.btn-add-user:hover {
+  border-color: var(--electric-blue);
+  background: rgba(2, 151, 222, 0.32);
+  color: #fff;
+}
+
+.modal-backdrop-custom {
+  overflow-y: auto;
+  padding: 20px;
+  background: rgba(1, 7, 12, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.modal-panel {
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: #071722;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.modal-panel h4,
+.modal-panel h5 {
+  color: #fff;
+}
+
+.modal-panel .form-label {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.modal-panel .text-secondary {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.modal-panel .text-danger {
+  color: #ff9a93 !important;
+}
+
+.modal-panel .alert-danger {
+  border-color: rgba(217, 45, 32, 0.35);
+  background: rgba(217, 45, 32, 0.14);
+  color: #ffb4ad;
+}
+
+.modal-panel .form-control,
+.modal-panel .form-select {
+  border-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.modal-panel .form-control:focus,
+.modal-panel .form-select:focus {
+  border-color: var(--electric-blue);
+  box-shadow: 0 0 0 3px rgba(2, 151, 222, 0.18);
+}
+
+.modal-panel .form-select option {
+  background: #071722;
+  color: #fff;
+}
+
+.modal-panel .btn-outline-secondary {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.modal-panel .btn-outline-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.modal-panel .btn-close {
+  filter: invert(1);
+}
+
+.modal-panel .border-top {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.rights-footer-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.perm-card {
+  border-color: rgba(2, 151, 222, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.perm-card-title,
+.perm-item {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.perm-item.disabled-label {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.perm-card .form-check-input,
+#rightsModal .form-check-input {
+  border-color: rgba(255, 255, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.perm-card .form-check-input:checked,
+#rightsModal .form-check-input:checked {
+  border-color: var(--electric-blue) !important;
+  background-color: var(--electric-blue) !important;
+}
+
+.btn-quick-toggle {
+  background: rgba(2, 151, 222, 0.12);
+  color: #b9e8ff;
+}
+
+.btn-quick-toggle:hover {
+  background: rgba(2, 151, 222, 0.24);
+  color: #fff;
+}
+
+button {
+  --button-glow: rgba(2, 151, 222, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+button:hover:not(:disabled) {
+  box-shadow: 0 0 12px var(--button-glow);
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-add-user,
+.btn-quick-toggle {
+  --button-glow: rgba(2, 151, 222, 0.6);
+}
+
+.btn-action-edit {
+  --button-glow: rgba(255, 244, 229, 0.8);
+}
+
+.btn-action-approve,
+.btn-action-unblock {
+  --button-glow: rgba(19, 115, 51, 0.55);
+}
+
+.btn-action-block,
+.btn-action-delete,
+.logout-btn {
+  --button-glow: rgba(217, 45, 32, 0.55);
+}
+
+.btn-action-rights {
+  --button-glow: rgba(209, 213, 219, 0.75);
+}
+
+.modal-panel .btn-outline-secondary,
+.modal-panel .btn-close {
+  --button-glow: rgba(255, 255, 255, 0.35);
+}
+
+@media (max-width: 760px) {
+  sidebar {
+    width: 62px;
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
+  sidebar:hover,
+  sidebar:focus-within {
+    width: 245px;
+  }
+
+  .main-container {
+    width: calc(100% - 62px);
+    margin-left: 62px;
+  }
+
+  .dashboard-header {
+    padding: 14px 20px;
+  }
+
+  .dashboard-body {
+    gap: 20px;
+    padding: 24px 20px;
+  }
+
+  .hero-banner {
+    padding: 26px 24px;
+  }
+
+  .card-top-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-toolbar {
+    justify-content: stretch;
+  }
+
+  .table-search-box {
+    flex: 1;
+  }
+
+  .table-card {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .top-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-search-box {
+    width: 100%;
+  }
+
+  .btn-add-user {
+    width: 100%;
+  }
+
+  .modal-panel {
+    padding: 18px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 </style>
 </head>
 <body>
 
-<!-- Top Navigation Bar -->
-<nav class="navbar-custom d-flex justify-content-between align-items-center">
-  <div class="d-flex align-items-center gap-3">
-    <div class="brand-logo">G</div>
-    <span class="fw-bold fs-5 text-dark">GerodiasPT Inc.</span>
+<sidebar>
+  <div class="sidebar-top">
+    <div class="sidebar-brand">
+      <div class="brand-logo-box">H</div>
+      <div class="brand-text-wrap">
+        <div class="brand-title">Hope, Inc.</div>
+        <div class="brand-subtitle">Business Workspace</div>
+      </div>
+    </div>
+    <label class="sidebar-search" for="sidebarSearchInput">
+      <span class="search-icon search-mark" aria-hidden="true"></span>
+      <input id="sidebarSearchInput" class="search-input" type="search" placeholder="Search pages..." aria-label="Search navigation">
+    </label>
+    <nav class="nav-menu" aria-label="Main navigation">
+      <div class="nav-section-title">General</div>
+      <a href="/dashboard" class="nav-item">
+        <span class="icon" aria-hidden="true">🏠</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="sales.html" class="nav-item">
+        <span class="icon" aria-hidden="true">📊</span>
+        <span class="nav-label">Sales & Orders</span>
+      </a>
+      <a href="products.html" class="nav-item">
+        <span class="icon" aria-hidden="true">📦</span>
+        <span class="nav-label">Products</span>
+      </a>
+      <a href="customers.html" class="nav-item">
+        <span class="icon" aria-hidden="true">👥</span>
+        <span class="nav-label">Customers</span>
+      </a>
+      <div class="nav-section-title">Organization</div>
+      <a href="employees.html" class="nav-item">
+        <span class="icon" aria-hidden="true">👨‍💼</span>
+        <span class="nav-label">Employees</span>
+      </a>
+      <a href="departments.html" class="nav-item">
+        <span class="icon" aria-hidden="true">🏢</span>
+        <span class="nav-label">Departments</span>
+      </a>
+      <a id="userManagementNavItem" href="/users" class="nav-item active role-hidden" aria-current="page">
+        <span class="icon" aria-hidden="true">🛡️</span>
+        <span class="nav-label">User Management</span>
+      </a>
+    </nav>
   </div>
-  <a href="/dashboard" class="back-dashboard-link">Back to Dashboard</a>
-</nav>
+  <div class="sidebar-footer">
+    <div class="user-profile-card">
+      <div class="user-avatar" id="currentUserAvatar">U</div>
+      <div class="user-info">
+        <div class="user-name" id="userNavDisplay">Signed in</div>
+        <div class="user-role" id="sidebarRoleDisplay">User</div>
+      </div>
+    </div>
+    <button id="logoutBtn" type="button" class="logout-btn">
+      <span class="icon" aria-hidden="true">L</span>
+      <span class="nav-label">Log out</span>
+    </button>
+  </div>
+</sidebar>
 
-<!-- Main Content Container -->
-<div class="main-container">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-dark mb-0">User Management</h2>
-    <button id="openAddModalBtn" class="btn btn-add-user">+ Add User</button>
-  </div>
+<main class="main-container">
+  <header class="dashboard-header">
+    <div class="breadcrumb">Users / Rights</div>
+    <div class="top-header-right">
+      <div class="admin-pill" id="userRoleDisplay">User</div>
+      <span class="header-user-name" id="headerUserName">Signed in</span>
+    </div>
+  </header>
 
-  <div class="table-card mb-5">
-    <table class="table mb-0">
-      <thead>
-        <tr>
-          <th style="width: 22%;">Name</th>
-          <th style="width: 22%;">Email</th>
-          <th style="width: 16%;">Role</th>
-          <th style="width: 12%;">Status</th>
-          <th style="width: 28%;">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="userTableBody">
-        <tr><td colspan="5" class="text-center text-muted py-4">Loading users...</td></tr>
-      </tbody>
-    </table>
+  <div class="dashboard-body">
+    <section class="hero-banner">
+      <h1>User Management</h1>
+      <p>Manage accounts, approval status, roles, and access rights.</p>
+    </section>
+
+    <section class="table-card" aria-labelledby="usersCardTitle">
+      <div class="card-top-row">
+        <div>
+          <h3 id="usersCardTitle">System User Permissions</h3>
+          <p class="subtitle">Supabase-connected accounts grouped by role and alphabetized within each role.</p>
+        </div>
+        <div class="table-toolbar">
+          <label class="table-search-box" for="userSearchInput">
+            <span class="search-mark" aria-hidden="true"></span>
+            <input id="userSearchInput" type="search" placeholder="Search users or roles..." oninput="filterUsersTable()" aria-label="Search users">
+          </label>
+          <button id="openAddModalBtn" type="button" class="btn btn-add-user">+ Add User</button>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table id="usersTable">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Email</th>
+              <th scope="col">Role</th>
+              <th scope="col">Status</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <tr><td colspan="5" class="text-center py-4">Loading users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
-</div>
+</main>
 
 <!-- User Form Modal -->
 <div id="userModal" class="modal-backdrop-custom hidden">
-  <div class="bg-white p-4 rounded-4 shadow-lg" style="width: 100%; max-width: 440px;">
+  <div class="modal-panel" style="max-width: 440px;">
     <h4 id="modalTitle" class="fw-bold mb-3">Add New User</h4>
     <div id="modalError" class="text-danger small mb-2"></div>
 
@@ -433,7 +1345,7 @@ body {
 
 <!-- Rights Management Modal -->
 <div id="rightsModal" class="modal-backdrop-custom hidden">
-  <div class="bg-white p-4 rounded-4 shadow-lg" style="width: 100%; max-width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+  <div class="modal-panel" style="max-width: 680px; display: flex; flex-direction: column;">
     
     <!-- Modal Header -->
     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -459,7 +1371,7 @@ body {
           <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-3" style="font-size: 12.5px;" onclick="toggleAllGlobalRights(false)">Deselect All</button>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="rights-footer-actions d-flex gap-2">
           <button type="button" id="cancelRightsBtn" class="btn btn-sm btn-outline-secondary py-1 px-3" style="font-size: 13px;">Cancel</button>
           <button type="submit" id="saveRightsBtn" class="btn btn-sm btn-add-user py-1 px-4" style="font-size: 13px;">Save Rights</button>
         </div>
@@ -577,28 +1489,73 @@ async function loadUsers() {
 async function loadCurrentUserProfile() {
   try {
     const res = await fetch('/api/auth/me');
-    const data = await res.json();
-    if (!res.ok) return;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Failed to load the current user profile.');
+    if (!data.user) throw new Error('The current user profile was not returned.');
 
-    // Display Last Name (or fall back to Email) in the navbar display element
-    const userNavDisplay = document.getElementById('userNavDisplay'); // Update ID to match your navbar element
-    if (userNavDisplay && data.user) {
-      userNavDisplay.textContent = data.user.lastName || data.user.email;
-    }
+    const fullName = [data.user.firstName, data.user.lastName].filter(Boolean).join(' ').trim()
+      || data.user.email
+      || 'User';
+    const roleName = data.user.roleName || 'User';
+    const isStandardUser = ['user', 'standard user'].includes(String(roleName).trim().toLowerCase());
+    document.getElementById('userManagementNavItem')
+      .classList.toggle('role-hidden', isStandardUser);
+    const initials = fullName.split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toUpperCase();
+
+    document.getElementById('userNavDisplay').textContent = fullName;
+    document.getElementById('headerUserName').textContent = fullName;
+    document.getElementById('userRoleDisplay').textContent = roleName;
+    document.getElementById('sidebarRoleDisplay').textContent = roleName;
+    document.getElementById('currentUserAvatar').textContent = initials || 'U';
   } catch (err) {
-    console.error('Failed to load active user profile:', err);
+    console.error('Failed to load current user profile:', err);
   }
+}
+
+function filterUsersTable() {
+  renderTable(usersData);
 }
 
 function renderTable(users) {
   const tbody = document.getElementById('userTableBody');
   if (!tbody) return;
-  if (!users || users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No users found.</td></tr>';
+
+  const searchTerm = (document.getElementById('userSearchInput')?.value || '').trim().toLowerCase();
+  const sourceUsers = Array.isArray(users) ? users : [];
+  const roleOrder = roleName => {
+    switch (String(roleName || 'User').trim().toLowerCase()) {
+      case 'superadmin': return 0;
+      case 'admin':
+      case 'administrator': return 1;
+      case 'staff': return 2;
+      case 'standard user':
+      case 'user': return 3;
+      default: return 4;
+    }
+  };
+  const sortedUsers = [...sourceUsers].sort((a, b) => {
+    const roleDifference = roleOrder(a.roleName || a.role_name) - roleOrder(b.roleName || b.role_name);
+    if (roleDifference !== 0) return roleDifference;
+
+    const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
+    const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
+    return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+  });
+  const filteredUsers = sortedUsers.filter(user => [
+    user.firstName,
+    user.lastName,
+    user.email,
+    user.roleName || user.role_name,
+    user.status
+  ].some(value => String(value || '').toLowerCase().includes(searchTerm)));
+
+  if (filteredUsers.length === 0) {
+    const message = sourceUsers.length === 0 ? 'No users found.' : 'No matching users found.';
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">${message}</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = users.map(user => {
+  tbody.innerHTML = filteredUsers.map(user => {
     const rawRole = user.roleName || user.role_name || 'User';
     const displayRoleName = rawRole === 'Standard User' ? 'User' : rawRole;
     let badgeClass = 'role-badge-user';
@@ -636,23 +1593,24 @@ function renderTable(users) {
 
     const actionsList = [rightsBtn, editBtn, pendingActions, blockBtn, deleteBtn].filter(Boolean).join('');
     const actionsContent = actionsList
-      ? `<div class="d-flex align-items-center gap-2">${actionsList}</div>`
-      : '<span class="text-muted small">No actions available</span>';
+      ? `<div class="action-buttons">${actionsList}</div>`
+      : '<span class="no-actions">No actions available</span>';
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown user';
 
     return `
       <tr>
-        <td class="align-middle" style="color: #101828;">
-          <div class="d-inline-flex align-items-center gap-2 fw-bold">
-            <span>${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}</span>
-            ${user.isSelf ? '<span class="badge bg-secondary-subtle text-secondary">You</span>' : ''}
+        <td class="user-name-cell">
+          <div class="user-name-layout">
+            <span>${escapeHtml(fullName)}</span>
+            ${user.isSelf ? '<span class="badge badge-you">You</span>' : ''}
           </div>
         </td>
-        <td class="align-middle text-truncate" style="color: #344054; max-width: 180px;" title="${escapeHtml(user.email)}">
+        <td class="email-cell" title="${escapeHtml(user.email)}">
           ${escapeHtml(user.email)}
         </td>
-        <td class="align-middle">${roleContent}</td>
-        <td class="align-middle">${statusBadge}</td>
-        <td class="align-middle" style="white-space: nowrap;">${actionsContent}</td>
+        <td>${roleContent}</td>
+        <td>${statusBadge}</td>
+        <td>${actionsContent}</td>
       </tr>
     `;
   }).join('');
@@ -992,6 +1950,45 @@ window.deleteUser = async function(id) {
     alert(err.message);
   }
 };
+
+const sidebarSearchInput = document.getElementById('sidebarSearchInput');
+if (sidebarSearchInput) {
+  sidebarSearchInput.addEventListener('input', () => {
+    const query = sidebarSearchInput.value.trim().toLowerCase();
+    const navMenu = document.querySelector('.nav-menu');
+    const navItems = navMenu.querySelectorAll('.nav-item');
+
+    navItems.forEach(item => {
+      item.hidden = Boolean(query) && !item.textContent.toLowerCase().includes(query);
+    });
+
+    navMenu.querySelectorAll('.nav-section-title').forEach(title => {
+      let sibling = title.nextElementSibling;
+      let hasVisibleItem = false;
+      while (sibling && !sibling.classList.contains('nav-section-title')) {
+        if (sibling.classList.contains('nav-item') && !sibling.hidden) hasVisibleItem = true;
+        sibling = sibling.nextElementSibling;
+      }
+      title.hidden = !hasVisibleItem;
+    });
+  });
+}
+
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    logoutBtn.disabled = true;
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Could not log out.');
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout failed:', error);
+      alert(error.message || 'Could not log out.');
+      logoutBtn.disabled = false;
+    }
+  });
+}
 
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, m => ({

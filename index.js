@@ -191,13 +191,11 @@ async function countActiveSuperadmins(superadminRoleId) {
 }
 
 // Static File Routes
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "splashindex.html")));
+app.get('/splashindex', (req, res) => res.sendFile(path.join(__dirname, "public", "splashindex.html")));
 app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
-app.get('/register', (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
 app.get('/users', requireAuth, requireUserManagementAccess, (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
 app.get('/setPassword', (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
-app.get('/forgotPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html')));
 app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
 
 // Auth API Endpoints
@@ -292,32 +290,45 @@ app.post('/api/auth/setPassword', async (req, res) => {
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const lastName = (req.body.lastName || "").trim();
-    const firstName = (req.body.firstName || "").trim();
-    const email = (req.body.email || "").trim().toLowerCase();
+    const body = req.body || {};
+    const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
 
-    if (!lastName || !firstName || !email) {
-      return res.status(400).json({ message: "Last name, first name, and email are required." });
+    if (!fullName || !email || !password || !confirmPassword) {
+      return res.status(400).json({ message: "Full name, email, and password are required." });
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "Enter a valid email address." });
     }
 
-    const fullName = `${firstName} ${lastName}`;
     if (email.length > 50) return res.status(400).json({ message: "Email must be 50 characters or fewer." });
     if (fullName.length > 100) return res.status(400).json({ message: "Name is too long." });
+    if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match." });
+
+    const nameParts = fullName.split(/\s+/);
+    const firstName = nameParts.shift();
+    const lastName = nameParts.join(" ");
+    if (!lastName) return res.status(400).json({ message: "Enter your first and last name." });
+    if (firstName.length > 50 || lastName.length > 50) {
+      return res.status(400).json({ message: "First and last names must be 50 characters or fewer." });
+    }
 
     const { defaultUserRoleId } = await getRoleConfig();
     if (!defaultUserRoleId) {
       return res.status(500).json({ message: "The default User role is not configured." });
     }
 
+    const passwordHash = await bcrypt.hash(password, 10);
     const { error } = await supabase.from("app_user").insert({
       username: email,
-      password_hash: "!pending-no-password",
+      password_hash: passwordHash,
       first_name: firstName,
       last_name: lastName,
+      full_name: fullName,
       email: email,
       role_id: defaultUserRoleId,
       status: 'pending'
@@ -332,44 +343,6 @@ app.post("/api/auth/register", async (req, res) => {
   } catch (err) {
     console.error("Supabase insert error:", err);
     return res.status(500).json({ message: "Something went wrong. Please try again." });
-  }
-});
-
-app.post('/api/auth/forgotPassword', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address.' });
-    }
-
-    const { data: user, error: fetchError } = await supabase
-      .from('app_user')
-      .select('email, is_blocked')
-      .eq('email', email.toLowerCase())
-      .maybeSingle();
-
-    const genericSuccess = { message: 'If an account exists with that email, a password reset link has been sent.' };
-    if (fetchError || !user) return res.status(200).json(genericSuccess);
-
-    if (user.is_blocked) return res.status(403).json({ message: 'This account is blocked. Please contact support.' });
-
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetExpires = new Date(Date.now() + 3600000).toISOString();
-
-    const { error: updateError } = await supabase
-      .from('app_user')
-      .update({ reset_token: resetToken, reset_token_expires: resetExpires })
-      .eq('email', user.email);
-
-    if (updateError) throw updateError;
-
-    const resetLink = `http://localhost:3000/resetPassword?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
-    console.log(`\nPASSWORD RESET LINK FOR ${user.email}:\n${resetLink}\n`);
-
-    return res.status(200).json(genericSuccess);
-  } catch (err) {
-    console.error('Forgot password error:', err);
-    return res.status(500).json({ message: 'Internal server error processing request.' });
   }
 });
 
@@ -405,6 +378,10 @@ app.post('/api/auth/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid email or password.' });
+    }
+
+    if (String(user.status || '').toLowerCase() === 'pending') {
+      return res.status(403).json({ message: 'Your account is pending approval. Please wait for an administrator to approve it.' });
     }
 
     req.session.user = { id: user.user_id, email: user.username };
