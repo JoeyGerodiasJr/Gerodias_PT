@@ -12,20 +12,34 @@
 ---
 
 ## 📑 Table of Contents
-- [Executive Overview & Architecture](#executive-overview--architecture)
-- [System Features & Security Highlights](#system-features--security-highlights)
+- [Executive Overview & Architecture](#executive-overview-architecture)
+- [System Features & Security Highlights](#system-features-security-highlights)
+  - [Authentication & User Lifecycle Governance](#authentication-user-governance)
+  - [Granular 36-Right Per-Action RBAC Catalogue](#36-right-rbac-catalogue)
+  - [Master Data Integrity & Point-in-Time Pricing](#master-data-pricing)
 - [Technology Stack](#technology-stack)
-- [Team Roster & Roles](#team-roster--roles)
-- [Agile Roadmap & Milestone Tracking](#agile-roadmap--milestone-tracking)
+- [Team Roster & Roles](#team-roster-roles)
+- [Agile Roadmap & Milestone Tracking](#agile-roadmap-milestone-tracking)
 - [Local Development Quickstart](#local-development-quickstart)
-- [Automated Testing & QA Verification](#automated-testing--qa-verification)
-- [Database Management (Supabase, No-Docker)](#database-management-supabase-no-docker)
+  - [Prerequisites](#prerequisites)
+  - [Clone and Install](#clone-and-install)
+  - [Environment Configuration](#environment-configuration)
+  - [Run the Application](#run-the-application)
+- [Automated Testing & QA Verification](#automated-testing-qa-verification)
+  - [Run Smoke Tests](#run-smoke-tests)
+  - [QA Test Documentation](#qa-test-documentation)
+- [Database Management (Supabase, No-Docker)](#database-management)
+  - [Day-to-Day Supabase Workflow](#day-to-day-supabase-workflow)
+  - [Golden Rules for Database Integrity](#golden-rules-for-database-integrity)
 - [Repository Directory Structure](#repository-directory-structure)
-- [Git Workflow & Definition of Done](#git-workflow--definition-of-done)
+- [Git Workflow & Definition of Done](#git-workflow-definition-of-done)
+  - [Branch Naming Convention](#branch-naming-convention)
+  - [Pull Request & Auto-Close Requirements](#pull-request-auto-close-requirements)
+- [License & Attribution](#license-attribution)
 
 ---
 
-## 🏛️ Executive Overview & Architecture
+## <a id="executive-overview-architecture"></a>🏛️ Executive Overview & Architecture
 
 Gerodias PT modernizes the operational workflows of **Hope, Inc.** by centralizing master catalogs, human resources, sales orders, accounts receivable, and analytical reporting into an integrated, secure web system.
 
@@ -59,16 +73,16 @@ Gerodias PT modernizes the operational workflows of **Hope, Inc.** by centralizi
 
 ---
 
-## 🛡️ System Features & Security Highlights
+## <a id="system-features-security-highlights"></a>🛡️ System Features & Security Highlights
 
-### 1. Authentication & User Lifecycle Governance
+### <a id="authentication-user-governance"></a>1. Authentication & User Lifecycle Governance
 - **Role Hierarchy:** Supports `Superadmin`, `Admin`, and `User` roles.
 - **Pending User Approvals:** Self-registered accounts start in `pending` status and cannot access application features until approved by a Superadmin.
 - **First-Login Password Setup:** Seeded or provisioned accounts without a personal password (`!pending-no-password`) are routed directly to an enforced password-setup screen before accessing the dashboard.
 - **Role Isolation & Superadmin Protection:** Admin users manage standard users only; Superadmin accounts remain completely hidden from standard Admins. Server-side middleware strictly prevents deleting or blocking the last remaining Superadmin.
 - **Secure Password Reset:** Uses crypto-randomized, SHA-256 hashed tokens stored in a dedicated `password_reset_token` table with single-use and expiration checks.
 
-### 2. Granular 36-Right Per-Action RBAC Catalogue
+### <a id="36-right-rbac-catalogue"></a>2. Granular 36-Right Per-Action RBAC Catalogue
 Permissions are evaluated across five distinct business modules:
 1. **Customer:** `View`, `Add`, `Edit`, `Delete`
 2. **Product:** `View`, `Add`, `Edit`, `Delete`
@@ -79,7 +93,7 @@ Permissions are evaluated across five distinct business modules:
 > [!NOTE]
 > Per-action permissions are enforced dynamically on the client UI (action buttons and navigation links are hidden/disabled) **and** redundantly validated on every API endpoint via server-side permission middleware.
 
-### 3. Master Data Integrity & Point-in-Time Pricing
+### <a id="master-data-pricing"></a>3. Master Data Integrity & Point-in-Time Pricing
 - **Search Optimization:** Powered by PostgreSQL `pg_trgm` extension with GIN trigram indexes (`idx_customer_custname_trgm`, `idx_product_description_trgm`) for sub-millisecond case-insensitive `ILIKE` catalog searches.
 - **Point-in-Time Pricing Function:** `get_product_price_as_of(prodcode, target_date)` resolves historical effective prices from `pricehist` backed by composite descending B-tree indexes (`idx_pricehist_prodcode_effdate_desc`).
 - **Data Validation Constraints:** Enforced database check constraints (`chk_customer_payterm` for `'COD'`, `'30D'`, `'45D'`; `chk_product_unit` for `'pc'`, `'ea'`, `'mtr'`, `'pkg'`, `'ltr'`).
@@ -88,7 +102,7 @@ Permissions are evaluated across five distinct business modules:
 
 ---
 
-## 💻 Technology Stack
+## <a id="technology-stack"></a>💻 Technology Stack
 
 | Domain | Technology | Purpose |
 | :--- | :--- | :--- |
@@ -103,7 +117,7 @@ Permissions are evaluated across five distinct business modules:
 
 ---
 
-## 👥 Team Roster & Roles
+## <a id="team-roster-roles"></a>👥 Team Roster & Roles
 
 | Member Name | Role | GitHub Handle | Core Responsibilities |
 | :--- | :--- | :--- | :--- |
@@ -115,7 +129,7 @@ Permissions are evaluated across five distinct business modules:
 
 ---
 
-## 🚀 Agile Roadmap & Milestone Tracking
+## <a id="agile-roadmap-milestone-tracking"></a>🚀 Agile Roadmap & Milestone Tracking
 
 The project follows a strict 8-week agile schedule divided into four 2-week sprints. Each sprint delivers exactly 30 peer-reviewed Pull Requests (6 PRs per role) mapped 1:1 with GitHub Issues:
 
@@ -128,21 +142,21 @@ The project follows a strict 8-week agile schedule divided into four 2-week spri
 
 ---
 
-## ⚡ Local Development Quickstart
+## <a id="local-development-quickstart"></a>⚡ Local Development Quickstart
 
-### 1. Prerequisites
+### <a id="prerequisites"></a>1. Prerequisites
 - [Node.js](https://nodejs.org/) v20.x or higher
 - [Git](https://git-scm.com/)
 - Access to the team's shared Supabase cloud project
 
-### 2. Clone and Install
+### <a id="clone-and-install"></a>2. Clone and Install
 ```bash
 git clone https://github.com/JoeyGerodiasJr/Gerodias_PT.git
 cd Gerodias_PT
 npm install
 ```
 
-### 3. Environment Configuration
+### <a id="environment-configuration"></a>3. Environment Configuration
 Create a `.env` file in the project root:
 ```env
 PORT=3000
@@ -155,7 +169,7 @@ SESSION_SECRET=your_secure_session_secret
 > [!CAUTION]
 > Never commit `.env` or sensitive database connection strings to GitHub. The `.gitignore` file is pre-configured to exclude it.
 
-### 4. Run the Application
+### <a id="run-the-application"></a>4. Run the Application
 ```bash
 # Start the production/staging server
 npm start
@@ -167,11 +181,11 @@ Open your browser and navigate to **`http://localhost:3000`**.
 
 ---
 
-## 🧪 Automated Testing & QA Verification
+## <a id="automated-testing-qa-verification"></a>🧪 Automated Testing & QA Verification
 
 The repository includes lightweight automated smoke tests and extensive QA documentation to verify server integrity, authentication guards, and the 36-right permission matrix.
 
-### Run Smoke Tests
+### <a id="run-smoke-tests"></a>Run Smoke Tests
 ```bash
 npm test
 ```
@@ -180,7 +194,7 @@ The smoke test suite (`tests/smoke.test.js`) verifies:
 - Express server route definitions (auth, users, customer, product, health checks)
 - Session and security middleware presence
 
-### QA Test Documentation
+### <a id="qa-test-documentation"></a>QA Test Documentation
 Detailed test plans and test case execution logs are maintained in `docs/testing/`:
 - [S1-TST-01: Sprint 1 Test Plan](docs/testing/S1-TST-01-Test-Plan.md)
 - [S1-TST-02: Authentication Test Cases](docs/testing/S1-TST-02-Auth-Test-Cases.md)
@@ -191,14 +205,14 @@ Detailed test plans and test case execution logs are maintained in `docs/testing
 
 ---
 
-## 🗄️ Database Management (Supabase, No-Docker)
+## <a id="database-management"></a>🗄️ Database Management (Supabase, No-Docker)
 
 The project connects to a hosted cloud PostgreSQL instance on Supabase. **No local Docker daemon is required.** All schema changes are tracked as immutable, sequential migration files in `supabase/migrations/`.
 
 > [!IMPORTANT]
 > The **DB Admin (Kenji Ray Traqueña)** is the designated team member responsible for applying migrations to the cloud database (`supabase db push --linked`). Team members should not push migrations directly.
 
-### Day-to-Day Supabase Workflow
+### <a id="day-to-day-supabase-workflow"></a>Day-to-Day Supabase Workflow
 | Task | Command | Permitted Role |
 | :--- | :--- | :---: |
 | Check migration sync status | `supabase migration list --linked` | All Members |
@@ -206,14 +220,14 @@ The project connects to a hosted cloud PostgreSQL instance on Supabase. **No loc
 | Dry-run migration preview | `supabase db push --linked --dry-run` | DB Admin |
 | Apply migrations to cloud database | `supabase db push --linked` | **DB Admin Only** |
 
-### Golden Rules for Database Integrity
+### <a id="golden-rules-for-database-integrity"></a>Golden Rules for Database Integrity
 1. **Never edit an existing applied migration:** Always create a new migration with `supabase migration new <name>`.
 2. **Always write non-destructive SQL:** Use `CREATE OR REPLACE`, `IF NOT EXISTS`, and `DROP CONSTRAINT IF EXISTS`.
 3. **Do not use Docker-dependent commands:** Avoid `supabase start`, `supabase db reset`, `supabase db diff`, or `supabase db pull`.
 
 ---
 
-## 📂 Repository Directory Structure
+## <a id="repository-directory-structure"></a>📂 Repository Directory Structure
 
 ```text
 Gerodias_PT/
@@ -247,11 +261,11 @@ Gerodias_PT/
 
 ---
 
-## 🔄 Git Workflow & Definition of Done
+## <a id="git-workflow-definition-of-done"></a>🔄 Git Workflow & Definition of Done
 
 To maintain high code quality and zero regressions across all 120 project tasks, team members adhere to strict branching and Pull Request standards:
 
-### 1. Branch Naming Convention
+### <a id="branch-naming-convention"></a>1. Branch Naming Convention
 ```text
 feat/S<Sprint>-<ROLE>-<ID>-<kebab-description>   # Feature development
 docs/S<Sprint>-<ROLE>-<ID>-<kebab-description>   # Documentation and planning
@@ -259,7 +273,7 @@ test/S<Sprint>-<ROLE>-<ID>-<kebab-description>   # Test plans and test suites
 fix/S<Sprint>-<ROLE>-<ID>-<kebab-description>    # Bug fixes and audit alignments
 ```
 
-### 2. Pull Request & Auto-Close Requirements
+### <a id="pull-request-auto-close-requirements"></a>2. Pull Request & Auto-Close Requirements
 Every PR title must follow the pattern:
 ```text
 [S#-ROLE-##] Task Title (#<IssueNumber>)
@@ -276,7 +290,7 @@ The PR description must explicitly include:
 
 ---
 
-## 📄 License & Attribution
+## <a id="license-attribution"></a>📄 License & Attribution
 
 Developed as an academic enterprise software engineering project for **Hope, Inc.**.  
 All rights reserved © 2026 **Gerodias PT Team**.
