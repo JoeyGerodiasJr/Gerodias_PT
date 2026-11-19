@@ -37,55 +37,8 @@ function requireAuth(req, res, next) {
 }
 
 const PERMISSION_MODULE_ALIASES = {
-  Customer: ['Customer', 'Customer Management', 'CUST'],
-  Product: ['Product', 'Product Management', 'INV'],
-  'Human Resources': ['Human Resources', 'HR'],
-  Sales: ['Sales'],
-  Reports: ['Reports', 'FIN']
-};
-
-const ACTION_CODE_MAP = {
-  // Customer
-  can_add_customer: ['CREATE_CUSTOMER', 'can_add_customer'],
-  can_edit_customer: ['EDIT_CUSTOMER', 'can_edit_customer'],
-  can_delete_customer: ['DELETE_CUSTOMER', 'can_delete_customer'],
-  // Product
-  can_add_product: ['CREATE_PRODUCT', 'can_add_product'],
-  can_edit_product: ['EDIT_PRODUCT', 'can_edit_product'],
-  can_delete_product: ['DELETE_PRODUCT', 'can_delete_product'],
-  can_add_price: ['MANAGE_PRICING', 'can_add_price'],
-  can_edit_price: ['VIEW_PRICING', 'can_edit_price'],
-  can_delete_price: ['can_delete_price'],
-  // HR
-  can_add_job: ['can_add_job'],
-  can_edit_job: ['can_edit_job'],
-  can_delete_job: ['can_delete_job'],
-  can_add_department: ['MANAGE_DEPARTMENTS', 'can_add_department'],
-  can_edit_department: ['can_edit_department'],
-  can_delete_department: ['can_delete_department'],
-  can_add_employee: ['CREATE_EMPLOYEE', 'can_add_employee'],
-  can_edit_employee: ['EDIT_EMPLOYEE', 'can_edit_employee'],
-  can_delete_employee: ['DELETE_EMPLOYEE', 'can_delete_employee'],
-  can_view_job_history: ['VIEW_JOB_HISTORY', 'can_view_job_history'],
-  can_add_job_history: ['MANAGE_JOB_HISTORY', 'can_add_job_history'],
-  can_edit_job_history: ['can_edit_job_history'],
-  can_delete_job_history: ['can_delete_job_history'],
-  // Sales
-  can_add_sale: ['CREATE_SALE', 'can_add_sale'],
-  can_edit_sale: ['EDIT_SALE', 'can_edit_sale'],
-  can_delete_sale: ['can_delete_sale'],
-  can_view_sale_details: ['VIEW_SALES', 'can_view_sale_details'],
-  can_add_sale_detail: ['can_add_sale_detail'],
-  can_edit_sale_detail: ['can_edit_sale_detail'],
-  can_delete_sale_detail: ['can_delete_sale_detail'],
-  // Reports
-  can_view_top_customers: ['can_view_top_customers'],
-  can_view_product_master_list: ['can_view_product_master_list'],
-  can_view_top_products: ['can_view_top_products'],
-  can_view_active_employees: ['VIEW_EMPLOYEES', 'can_view_active_employees'],
-  can_view_all_employees: ['can_view_all_employees'],
-  can_view_employee_job_history: ['can_view_employee_job_history'],
-  can_view_top_sales: ['VIEW_FIN_REPORTS', 'can_view_top_sales']
+  Customer: ['Customer', 'Customer Management'],
+  Product: ['Product', 'Product Management']
 };
 
 function parseGranularPermissions(value) {
@@ -95,112 +48,6 @@ function parseGranularPermissions(value) {
     throw new Error('Invalid granular permissions data.');
   }
   return permissions;
-}
-
-async function getUserRightsMap(userId) {
-  const ALL_MODULE_KEYS = ['Customer', 'Product', 'Human Resources', 'Sales', 'Reports'];
-  const rightsMap = {};
-
-  ALL_MODULE_KEYS.forEach(mod => {
-    rightsMap[mod] = {
-      module_name: mod,
-      enabled: false,
-      can_create: false,
-      can_read: false,
-      can_update: false,
-      can_delete: false,
-      granular_permission: {}
-    };
-  });
-
-  // 1. Try querying DBA normalized user_permission join with rights & module
-  try {
-    const { data: perms, error: permErr } = await supabase
-      .from('user_permission')
-      .select('right_id, is_deleted, rights (right_id, module_id, action_code, right_name, description, is_deleted, module (module_id, module_code, module_name, is_deleted))')
-      .eq('user_id', userId);
-
-    if (!permErr && Array.isArray(perms) && perms.length > 0) {
-      perms.forEach(p => {
-        if (p.is_deleted === true) return;
-        const r = p.rights;
-        if (!r || r.is_deleted === true) return;
-        const modName = r.module?.module_name || r.module?.module_code;
-        const actionCode = (r.action_code || r.right_name || '').trim();
-
-        const matchedMod = ALL_MODULE_KEYS.find(m => {
-          const aliases = PERMISSION_MODULE_ALIASES[m] || [m];
-          return aliases.some(a => String(modName || '').toLowerCase().includes(a.toLowerCase()));
-        }) || 'Customer';
-
-        rightsMap[matchedMod].enabled = true;
-        rightsMap[matchedMod].can_read = true;
-
-        Object.entries(ACTION_CODE_MAP).forEach(([permKey, codes]) => {
-          if (
-            codes.some(c => c.toLowerCase() === actionCode.toLowerCase()) ||
-            actionCode.toLowerCase() === permKey.toLowerCase()
-          ) {
-            rightsMap[matchedMod].granular_permission[permKey] = true;
-            rightsMap[matchedMod][permKey] = true;
-            if (/^can_(add|create)_/.test(permKey)) rightsMap[matchedMod].can_create = true;
-            if (/^can_(edit|update)_/.test(permKey)) rightsMap[matchedMod].can_update = true;
-            if (/^can_delete_/.test(permKey)) rightsMap[matchedMod].can_delete = true;
-          }
-        });
-      });
-    }
-  } catch (e) {
-    console.warn('user_permission query notice:', e.message);
-  }
-
-  // 2. Safe fallback / complement: user_rights table
-  try {
-    const { data: rightsRows, error: rightsError } = await supabase
-      .from('user_rights')
-      .select('*')
-      .eq('user_id', userId);
-
-    if (!rightsError && Array.isArray(rightsRows) && rightsRows.length > 0) {
-      rightsRows.forEach(r => {
-        const modKey = ALL_MODULE_KEYS.find(m => {
-          const aliases = PERMISSION_MODULE_ALIASES[m] || [m];
-          return aliases.some(a => a.toLowerCase() === String(r.module_name || '').toLowerCase());
-        }) || r.module_name;
-
-        const granular = parseGranularPermissions(r.granular_permission);
-        const isEnabled = typeof r.enabled === 'boolean' ? r.enabled : Boolean(r.can_read);
-
-        if (!rightsMap[modKey]) {
-          rightsMap[modKey] = {
-            module_name: modKey,
-            enabled: isEnabled,
-            can_create: Boolean(r.can_create),
-            can_read: Boolean(r.can_read),
-            can_update: Boolean(r.can_update),
-            can_delete: Boolean(r.can_delete),
-            granular_permission: granular,
-            ...granular
-          };
-        } else {
-          rightsMap[modKey].enabled = rightsMap[modKey].enabled || isEnabled;
-          rightsMap[modKey].can_read = rightsMap[modKey].can_read || Boolean(r.can_read);
-          rightsMap[modKey].can_create = rightsMap[modKey].can_create || Boolean(r.can_create);
-          rightsMap[modKey].can_update = rightsMap[modKey].can_update || Boolean(r.can_update);
-          rightsMap[modKey].can_delete = rightsMap[modKey].can_delete || Boolean(r.can_delete);
-          rightsMap[modKey].granular_permission = {
-            ...rightsMap[modKey].granular_permission,
-            ...granular
-          };
-          Object.assign(rightsMap[modKey], granular);
-        }
-      });
-    }
-  } catch (e) {
-    console.warn('user_rights query notice:', e.message);
-  }
-
-  return rightsMap;
 }
 
 function checkPermission(moduleName, permissionKey) {
@@ -227,20 +74,21 @@ function checkPermission(moduleName, permissionKey) {
         return next();
       }
 
-      // 2. Query target user's rights (user_permission + user_rights fallback)
-      const rightsMap = await getUserRightsMap(userId);
-      const modKey = Object.keys(rightsMap).find(m => {
-        const aliases = PERMISSION_MODULE_ALIASES[m] || [m];
-        return aliases.some(a => a.toLowerCase() === moduleName.toLowerCase());
-      }) || moduleName;
+      // 2. Query target user's rights for this specific module
+      const moduleNames = PERMISSION_MODULE_ALIASES[moduleName] || [moduleName];
+      const { data: rightsRows, error: rightsError } = await supabase
+        .from('user_rights')
+        .select('module_name, can_read, granular_permission')
+        .eq('user_id', userId)
+        .in('module_name', moduleNames);
 
-      const moduleRights = rightsMap[modKey];
-      const hasGranular = Boolean(
-        moduleRights?.granular_permission?.[permissionKey] === true ||
-        moduleRights?.[permissionKey] === true
-      );
+      if (rightsError) throw rightsError;
 
-      if (moduleRights && (moduleRights.can_read === true || moduleRights.enabled === true) && hasGranular) {
+      const rights = (rightsRows || []).find(row => row.module_name === moduleName)
+        || (rightsRows || []).find(row => moduleNames.includes(row.module_name));
+      const granularPermissions = parseGranularPermissions(rights?.granular_permission);
+
+      if (rights?.can_read === true && granularPermissions[permissionKey] === true) {
         return next();
       }
 
@@ -343,13 +191,11 @@ async function countActiveSuperadmins(superadminRoleId) {
 }
 
 // Static File Routes
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "splashindex.html")));
+app.get('/splashindex', (req, res) => res.sendFile(path.join(__dirname, "public", "splashindex.html")));
 app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
-app.get('/register', (req, res) => res.sendFile(path.join(__dirname, "public", "register.html")));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
 app.get('/users', requireAuth, requireUserManagementAccess, (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
 app.get('/setPassword', (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
-app.get('/forgotPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html')));
 app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
 
 // Auth API Endpoints
@@ -363,11 +209,10 @@ app.post('/api/auth/resetPassword', async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     }
 
-    const cleanedEmail = email.trim().toLowerCase();
     const { data: user, error: fetchError } = await supabase
       .from('app_user')
-      .select('user_id, email, is_blocked')
-      .eq('email', cleanedEmail)
+      .select('user_id, reset_token, reset_token_expires, is_blocked')
+      .eq('email', email.toLowerCase())
       .maybeSingle();
 
     if (fetchError || !user) {
@@ -378,84 +223,23 @@ app.post('/api/auth/resetPassword', async (req, res) => {
       return res.status(403).json({ message: 'This account is blocked.' });
     }
 
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const nowIso = new Date().toISOString();
-    let validTokenId = null;
-    let isValid = false;
-
-    // 1. Primary: Check DBA password_reset_token table with hashed token and expiry
-    try {
-      const { data: tokenRecord, error: tokenErr } = await supabase
-        .from('password_reset_token')
-        .select('token_id, user_id, expires_at, is_used, is_deleted')
-        .eq('user_id', user.user_id)
-        .eq('token_hash', tokenHash)
-        .eq('is_used', false)
-        .eq('is_deleted', false)
-        .gt('expires_at', nowIso)
-        .order('token_id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!tokenErr && tokenRecord) {
-        isValid = true;
-        validTokenId = tokenRecord.token_id;
-      }
-    } catch (e) {
-      console.warn('password_reset_token query notice:', e.message);
-    }
-
-    // 2. Safe fallback: check app_user.reset_token
-    if (!isValid) {
-      try {
-        const { data: fallbackUser } = await supabase
-          .from('app_user')
-          .select('reset_token, reset_token_expires')
-          .eq('user_id', user.user_id)
-          .maybeSingle();
-
-        if (
-          fallbackUser &&
-          fallbackUser.reset_token === token &&
-          fallbackUser.reset_token_expires &&
-          new Date() <= new Date(fallbackUser.reset_token_expires)
-        ) {
-          isValid = true;
-        }
-      } catch (_) {}
-    }
-
-    if (!isValid) {
+    const now = new Date();
+    const tokenExpiry = new Date(user.reset_token_expires);
+    if (!user.reset_token || user.reset_token !== token || now > tokenExpiry) {
       return res.status(400).json({ message: 'Invalid or expired password reset link.' });
     }
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
     const { error: updateError } = await supabase
       .from('app_user')
-      .update({ password_hash: newPasswordHash })
+      .update({
+        password_hash: newPasswordHash,
+        reset_token: null,
+        reset_token_expires: null
+      })
       .eq('user_id', user.user_id);
 
     if (updateError) throw updateError;
-
-    // Mark token as used in password_reset_token
-    if (validTokenId) {
-      try {
-        await supabase
-          .from('password_reset_token')
-          .update({ is_used: true })
-          .eq('token_id', validTokenId);
-      } catch (e) {
-        console.warn('Could not mark password_reset_token as used:', e.message);
-      }
-    }
-
-    // Clear reset_token on app_user fallback safely
-    try {
-      await supabase
-        .from('app_user')
-        .update({ reset_token: null, reset_token_expires: null })
-        .eq('user_id', user.user_id);
-    } catch (_) {}
 
     return res.status(200).json({ message: 'Password reset successful! Redirecting to login...' });
   } catch (err) {
@@ -506,32 +290,45 @@ app.post('/api/auth/setPassword', async (req, res) => {
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const lastName = (req.body.lastName || "").trim();
-    const firstName = (req.body.firstName || "").trim();
-    const email = (req.body.email || "").trim().toLowerCase();
+    const body = req.body || {};
+    const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
 
-    if (!lastName || !firstName || !email) {
-      return res.status(400).json({ message: "Last name, first name, and email are required." });
+    if (!fullName || !email || !password || !confirmPassword) {
+      return res.status(400).json({ message: "Full name, email, and password are required." });
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "Enter a valid email address." });
     }
 
-    const fullName = `${firstName} ${lastName}`;
     if (email.length > 50) return res.status(400).json({ message: "Email must be 50 characters or fewer." });
     if (fullName.length > 100) return res.status(400).json({ message: "Name is too long." });
+    if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match." });
+
+    const nameParts = fullName.split(/\s+/);
+    const firstName = nameParts.shift();
+    const lastName = nameParts.join(" ");
+    if (!lastName) return res.status(400).json({ message: "Enter your first and last name." });
+    if (firstName.length > 50 || lastName.length > 50) {
+      return res.status(400).json({ message: "First and last names must be 50 characters or fewer." });
+    }
 
     const { defaultUserRoleId } = await getRoleConfig();
     if (!defaultUserRoleId) {
       return res.status(500).json({ message: "The default User role is not configured." });
     }
 
+    const passwordHash = await bcrypt.hash(password, 10);
     const { error } = await supabase.from("app_user").insert({
       username: email,
-      password_hash: "!pending-no-password",
+      password_hash: passwordHash,
       first_name: firstName,
       last_name: lastName,
+      full_name: fullName,
       email: email,
       role_id: defaultUserRoleId,
       status: 'pending'
@@ -546,62 +343,6 @@ app.post("/api/auth/register", async (req, res) => {
   } catch (err) {
     console.error("Supabase insert error:", err);
     return res.status(500).json({ message: "Something went wrong. Please try again." });
-  }
-});
-
-app.post('/api/auth/forgotPassword', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address.' });
-    }
-
-    const cleanedEmail = email.trim().toLowerCase();
-    const { data: user, error: fetchError } = await supabase
-      .from('app_user')
-      .select('user_id, email, is_blocked')
-      .eq('email', cleanedEmail)
-      .maybeSingle();
-
-    const genericSuccess = { message: 'If an account exists with that email, a password reset link has been sent.' };
-    if (fetchError || !user) return res.status(200).json(genericSuccess);
-
-    if (user.is_blocked) return res.status(403).json({ message: 'This account is blocked. Please contact support.' });
-
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
-    const resetExpires = new Date(Date.now() + 3600000).toISOString();
-
-    // 1. Primary: Insert hashed token into DBA password_reset_token table
-    try {
-      await supabase
-        .from('password_reset_token')
-        .insert([{
-          user_id: user.user_id,
-          token_hash: tokenHash,
-          expires_at: resetExpires,
-          is_used: false,
-          is_deleted: false
-        }]);
-    } catch (e) {
-      console.warn('password_reset_token insert notice:', e.message);
-    }
-
-    // 2. Safe fallback: update app_user.reset_token if present in schema
-    try {
-      await supabase
-        .from('app_user')
-        .update({ reset_token: resetToken, reset_token_expires: resetExpires })
-        .eq('user_id', user.user_id);
-    } catch (_) {}
-
-    const resetLink = `http://localhost:3000/resetPassword?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
-    console.log(`\nPASSWORD RESET LINK FOR ${user.email}:\n${resetLink}\n`);
-
-    return res.status(200).json(genericSuccess);
-  } catch (err) {
-    console.error('Forgot password error:', err);
-    return res.status(500).json({ message: 'Internal server error processing request.' });
   }
 });
 
@@ -626,7 +367,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({ message: 'This account is blocked. Please contact support.' });
     }
 
-    const isPendingSetup = !user.password_hash || user.password_hash === '!pending-no-password' || !user.password_hash.startsWith('$2');
+    const isPendingSetup = !user.password_hash || user.password_hash === '!pending-no-password' || !user.password_hash.startsWith('$2b$');
     if (isPendingSetup) {
       return res.status(400).json({
         message: 'Password setup required. Please set your password first.',
@@ -637,6 +378,10 @@ app.post('/api/auth/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid email or password.' });
+    }
+
+    if (String(user.status || '').toLowerCase() === 'pending') {
+      return res.status(403).json({ message: 'Your account is pending approval. Please wait for an administrator to approve it.' });
     }
 
     req.session.user = { id: user.user_id, email: user.username };
@@ -700,7 +445,23 @@ app.get('/api/auth/me/rights', requireAuth, async (req, res) => {
 
     const roleName = userRecord?.role?.role_name;
     const isSuperadmin = isSuperadminRole(roleName);
-    const rightsMap = await getUserRightsMap(userId);
+
+    const { data: rights, error: rightsError } = await supabase
+      .from('user_rights')
+      .select('module_name, can_create, can_read, can_update, can_delete, granular_permission')
+      .eq('user_id', userId);
+
+    if (rightsError) throw rightsError;
+
+    const rightsMap = {};
+    (rights || []).forEach(r => {
+      const granularPermissions = parseGranularPermissions(r.granular_permission);
+      rightsMap[r.module_name] = {
+        ...r,
+        ...granularPermissions,
+        granular_permission: granularPermissions
+      };
+    });
 
     res.json({
       isSuperadmin,
@@ -1136,7 +897,30 @@ app.delete('/api/admin/users/:id', requireAuth, async (req, res) => {
 app.get('/api/admin/users/:id/rights', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const rightsMap = await getUserRightsMap(id);
+    const { data: rights, error } = await supabase
+      .from('user_rights')
+      .select('*')
+      .eq('user_id', id);
+
+    if (error) throw error;
+
+    const rightsMap = {};
+    (rights || []).forEach(r => {
+      const granular = parseGranularPermissions(r.granular_permission);
+
+      const modKey = r.module_name;
+      rightsMap[modKey] = {
+        module_name: modKey,
+        enabled: typeof r.enabled === 'boolean' ? r.enabled : Boolean(r.can_read),
+        can_create: Boolean(r.can_create),
+        can_read: Boolean(r.can_read),
+        can_update: Boolean(r.can_update),
+        can_delete: Boolean(r.can_delete),
+        granular_permission: granular,
+        ...granular
+      };
+    });
+
     res.json({ userId: id, rights: rightsMap });
   } catch (err) {
     console.error('Fetch user rights error:', err);
@@ -1170,54 +954,13 @@ app.post('/api/admin/users/:id/rights', requireAuth, async (req, res) => {
       return res.status(403).json({ message: 'Action denied: Only Admins or Superadmins can assign user rights.' });
     }
 
-    const previousRights = await getUserRightsMap(targetUserId);
+    const { data: previousRights, error: previousRightsError } = await supabase
+      .from('user_rights')
+      .select('*')
+      .eq('user_id', targetUserId);
 
-    // 1. Primary: Upsert / update DBA normalized user_permission joined with rights
-    try {
-      const { data: dbRights } = await supabase
-        .from('rights')
-        .select('right_id, module_id, action_code, right_name')
-        .eq('is_deleted', false);
+    if (previousRightsError) throw previousRightsError;
 
-      if (Array.isArray(dbRights) && dbRights.length > 0) {
-        for (const mod of updatedRights) {
-          const isEnabled = Boolean(mod.enabled);
-          for (const [permKey, val] of Object.entries(mod)) {
-            if (!permKey.startsWith('can_')) continue;
-            const isGranted = isEnabled && val === true;
-            const aliasCodes = ACTION_CODE_MAP[permKey] || [permKey];
-
-            const matchedRight = dbRights.find(r => {
-              const code = (r.action_code || r.right_name || '').toLowerCase();
-              return aliasCodes.some(ac => ac.toLowerCase() === code) || code === permKey.toLowerCase();
-            });
-
-            if (matchedRight) {
-              if (isGranted) {
-                await supabase
-                  .from('user_permission')
-                  .upsert({
-                    user_id: targetUserId,
-                    right_id: matchedRight.right_id,
-                    is_deleted: false,
-                    stamp: `ASSIGN ${currentUserId}`
-                  }, { onConflict: 'user_id, right_id' });
-              } else {
-                await supabase
-                  .from('user_permission')
-                  .update({ is_deleted: true, stamp: `REVOKE ${currentUserId}` })
-                  .eq('user_id', targetUserId)
-                  .eq('right_id', matchedRight.right_id);
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('user_permission synchronization notice:', e.message);
-    }
-
-    // 2. Safe fallback / mirror: user_rights table upsert
     const upsertPayload = updatedRights.map(r => {
       const isEnabled = Boolean(r.enabled);
       const permissions = Object.entries(r).filter(([key, value]) => key.startsWith('can_') && value === true);
@@ -1239,38 +982,39 @@ app.post('/api/admin/users/:id/rights', requireAuth, async (req, res) => {
       };
     });
 
-    try {
-      await supabase
-        .from('user_rights')
-        .upsert(upsertPayload, { onConflict: 'user_id, module_name' });
-    } catch (e) {
-      console.warn('user_rights fallback notice:', e.message);
+    const { error: upsertError } = await supabase
+      .from('user_rights')
+      .upsert(upsertPayload, { onConflict: 'user_id, module_name' });
+
+    if (upsertError) throw upsertError;
+
+    const { data: auditEntry, error: auditError } = await supabase
+      .from('audit_log')
+      .insert({
+        table_name: 'user_rights',
+        action: 'EDIT',
+        record_key: String(targetUserId),
+        old_values: { user_id: targetUserId, rights: previousRights || [] },
+        new_values: { user_id: targetUserId, rights: updatedRights },
+        action_by: String(currentUserId)
+      })
+      .select('audit_id')
+      .single();
+
+    if (auditError) {
+      console.error('User rights were updated, but audit logging failed:', auditError);
+      return res.status(500).json({
+        message: 'User rights were saved, but the audit log could not be recorded. Contact an administrator.'
+      });
+    }
+    if (!auditEntry) {
+      console.error('User rights were updated, but the audit insert returned no audit row.');
+      return res.status(500).json({
+        message: 'User rights were saved, but the audit log did not confirm a recorded row.'
+      });
     }
 
-    // 3. Record in audit_log
-    let auditId = null;
-    try {
-      const { data: auditEntry } = await supabase
-        .from('audit_log')
-        .insert({
-          table_name: 'user_permission',
-          action: 'EDIT',
-          record_key: String(targetUserId),
-          old_values: { user_id: targetUserId, rights: previousRights || {} },
-          new_values: { user_id: targetUserId, rights: updatedRights },
-          action_by: String(currentUserId)
-        })
-        .select('audit_id')
-        .maybeSingle();
-
-      if (auditEntry?.audit_id) {
-        auditId = auditEntry.audit_id;
-      }
-    } catch (e) {
-      console.warn('Audit logging notice for user rights:', e.message);
-    }
-
-    res.json({ message: 'User rights updated and audit entry recorded.', auditId });
+    res.json({ message: 'User rights updated and audit entry recorded.', auditId: auditEntry.audit_id });
   } catch (err) {
     console.error('Update user rights error:', err);
     res.status(500).json({ message: err.message || 'Failed to update user rights.' });
