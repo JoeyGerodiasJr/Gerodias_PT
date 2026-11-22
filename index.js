@@ -1,7 +1,7 @@
 const express = require("express");
 const path = require("path");
 const supabase = require("./src/config/supabaseClient");
-const session = require("express-session");
+const cookieSession = require("cookie-session");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
@@ -17,6 +17,11 @@ let verificationEmailTransporter = null;
 
 const app = express();
 app.use(express.json());
+app.set("trust proxy", 1);
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET must be set.");
+}
 
 // Log incoming requests to terminal for debugging
 app.use((req, res, next) => {
@@ -27,14 +32,15 @@ app.use((req, res, next) => {
 // Serve static frontend files from 'public'
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || "default-secret",
-  resave: false,
-  saveUninitialized: false,
+app.use(cookieSession({
+  name: "hope_session",
+  keys: [process.env.SESSION_SECRET],
+  signed: true,
+  maxAge: 1000 * 60 * 60 * 24,
   cookie: {
-    secure: false, 
-    httpOnly: true, 
-    maxAge: 1000 * 60 * 60 * 24 // 1 day
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    sameSite: "lax"
   }
 }));
 
@@ -752,11 +758,9 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post("/api/auth/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) return res.status(500).json({ message: "Could not log out." });
-    res.clearCookie("connect.sid");
-    res.status(200).json({ message: "Logged out successfully." });
-  });
+  req.session = null;
+  res.clearCookie("hope_session", { path: "/" });
+  res.status(200).json({ message: "Logged out successfully." });
 });
 
 app.get("/api/auth/me", async (req, res) => {
@@ -771,11 +775,9 @@ app.get("/api/auth/me", async (req, res) => {
     .maybeSingle();
 
   if (error || !user || user.is_blocked || user.status === 'rejected') {
-    req.session.destroy(() => {
-      res.clearCookie("connect.sid", { path: '/' });
-      return res.status(401).json({ message: "Account is blocked or rejected." });
-    });
-    return;
+    req.session = null;
+    res.clearCookie("hope_session", { path: '/' });
+    return res.status(401).json({ message: "Account is blocked or rejected." });
   }
 
   const userPayload = {
