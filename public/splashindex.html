@@ -913,7 +913,7 @@
                     </div>
 
                     <div class="timer-row">
-                        <span>Code expires in <span class="timer-badge" id="otpTimer">01:00</span></span>
+                        <span>Code expires in <span class="timer-badge" id="otpTimer">02:00</span></span>
                         <button type="button" id="resendBtn" class="resend-btn" onclick="resendCode()" disabled>Resend code</button>
                     </div>
 
@@ -985,6 +985,7 @@
         const alertBox = document.getElementById('modalAlert');
         const views = ['login', 'register', 'verify', 'forgot', 'reset'];
         let countdownInterval = null;
+        let pendingVerificationEmail = '';
 
         function openModal(viewName) {
             modal.classList.add('active');
@@ -1020,7 +1021,7 @@
             });
 
             if (viewName === 'verify') {
-                startOtpTimer(60);
+                startOtpTimer(120);
                 setTimeout(() => document.querySelectorAll('.otp-input')[0].focus(), 100);
             } else {
                 clearInterval(countdownInterval);
@@ -1095,7 +1096,7 @@
             });
         });
 
-        /* 60-Second OTP Countdown Timer */
+        /* 2-Minute OTP Countdown Timer */
         function startOtpTimer(durationSeconds) {
             clearInterval(countdownInterval);
             let timeLeft = durationSeconds;
@@ -1116,9 +1117,27 @@
             }, 1000);
         }
 
-        function resendCode() {
-            startOtpTimer(60);
-            showAlert('A new verification code has been sent to your email.');
+        async function resendCode() {
+            if (!pendingVerificationEmail) {
+                showAlert('Register first to request a verification code.', 'error');
+                return;
+            }
+            const resendBtn = document.getElementById('resendBtn');
+            resendBtn.disabled = true;
+            try {
+                const response = await fetch('/api/auth/resend-verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingVerificationEmail })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Unable to resend the code.');
+                startOtpTimer(120);
+                showAlert(data.message || 'A new verification code has been sent.');
+            } catch (error) {
+                resendBtn.disabled = false;
+                showAlert(error.message || 'Unable to resend the code. Please try again.', 'error');
+            }
         }
 
         async function handleLogin(e) {
@@ -1134,7 +1153,17 @@
                 });
                 const data = await response.json().catch(() => ({}));
 
-                if (!response.ok) throw new Error(data.message || 'Login failed.');
+                if (!response.ok) {
+                    if (data.code === 'EMAIL_NOT_VERIFIED') {
+                        pendingVerificationEmail = email.toLowerCase();
+                        document.getElementById('verifyEmailDisplay').textContent = pendingVerificationEmail;
+                        otpInputs.forEach(input => { input.value = ''; });
+                        switchView('verify');
+                        showAlert(data.message || 'Verify your email to continue.', 'error');
+                        return;
+                    }
+                    throw new Error(data.message || 'Login failed.');
+                }
 
                 window.location.href = '/dashboard';
             } catch (error) {
@@ -1175,14 +1204,27 @@
                 const data = await response.json().catch(() => ({}));
 
                 if (!response.ok) {
+                    if (data.code === 'VERIFICATION_EMAIL_FAILED') {
+                        pendingVerificationEmail = email.toLowerCase();
+                        document.getElementById('verifyEmailDisplay').textContent = pendingVerificationEmail;
+                        otpInputs.forEach(input => { input.value = ''; });
+                        form.reset();
+                        switchView('verify');
+                        startOtpTimer(0);
+                        showAlert(data.message, 'error');
+                        return;
+                    }
                     throw new Error(data.message || 'Registration failed.');
                 }
 
+                pendingVerificationEmail = email.toLowerCase();
+                document.getElementById('verifyEmailDisplay').textContent = pendingVerificationEmail;
+                otpInputs.forEach(input => { input.value = ''; });
                 form.reset();
                 document.getElementById('regPassword').dispatchEvent(new Event('input', { bubbles: true }));
                 document.getElementById('regConfirmPassword').dispatchEvent(new Event('input', { bubbles: true }));
-                switchView('login', true);
-                showAlert('Registration received. Your account is pending approval. You can log in after an administrator approves it.');
+                switchView('verify');
+                showAlert(data.message || 'Check your email for a 6-digit verification code.');
             } catch (error) {
                 console.error('Registration failed:', error);
                 showAlert(error.message || 'Unable to register. Please try again.', 'error');
@@ -1192,18 +1234,43 @@
             }
         }
 
-        function handleVerify(e) {
+        async function handleVerify(e) {
             e.preventDefault();
             let code = '';
             otpInputs.forEach(inp => code += inp.value);
-            if (code.length < 6) {
+            if (code.length !== 6) {
                 showAlert('Please enter the complete 6-digit verification code.', 'error');
                 return;
             }
-            showAlert('Email verified successfully! Redirecting to dashboard...');
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 1200);
+            if (!pendingVerificationEmail) {
+                showAlert('Register first to verify an email address.', 'error');
+                return;
+            }
+
+            const submitButton = e.currentTarget.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Verifying...';
+            try {
+                const response = await fetch('/api/auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingVerificationEmail, token: code })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Unable to verify your email.');
+
+                clearInterval(countdownInterval);
+                otpInputs.forEach(input => { input.value = ''; });
+                document.getElementById('loginEmail').value = pendingVerificationEmail;
+                switchView('login');
+                showAlert(data.message || 'Email verified. You can now continue.');
+            } catch (error) {
+                showAlert(error.message || 'Unable to verify your email. Please try again.', 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
         }
 
         async function handleForgot(e) {

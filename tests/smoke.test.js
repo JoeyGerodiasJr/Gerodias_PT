@@ -125,15 +125,15 @@ assertTest(
   'checkPermission, superadmin bypass, or user_permission schema integration missing'
 );
 
-// 9. SMK-008: Logout endpoint session destruction & cookie clearing
+// 9. SMK-008: Logout endpoint session clearing & cookie clearing
 const hasLogoutEndpoint = indexContent.includes("app.post('/api/auth/logout'") || indexContent.includes('app.post("/api/auth/logout"');
-const hasCookieClear = indexContent.includes('res.clearCookie("connect.sid"');
-const hasSessionDestroy = indexContent.includes('req.session.destroy');
+const hasCookieClear = indexContent.includes('res.clearCookie("hope_session"');
+const hasSessionClear = indexContent.includes('req.session = null');
 assertTest(
   'SMK-008',
   'Logout Endpoint Session Lifecycle (/api/auth/logout)',
-  hasLogoutEndpoint && hasCookieClear && hasSessionDestroy,
-  'Logout endpoint, cookie clear, or session destroy missing'
+  hasLogoutEndpoint && hasCookieClear && hasSessionClear,
+  'Logout endpoint, cookie clear, or session clear missing'
 );
 
 // 10. SMK-009: Vercel serves the exported Express app.
