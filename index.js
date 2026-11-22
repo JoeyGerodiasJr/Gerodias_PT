@@ -7,7 +7,13 @@ const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 const nodemailer = require("nodemailer");
 
-const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
+function isValidServiceKey(key) {
+  return typeof key === 'string'
+    && (key.startsWith('ey') || key.startsWith('sb_secret_'))
+    && !key.includes('your-');
+}
+
+const supabaseAdmin = (process.env.SUPABASE_SERVICE_ROLE_KEY && isValidServiceKey(process.env.SUPABASE_SERVICE_ROLE_KEY))
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false }
     })
@@ -596,7 +602,8 @@ app.post("/api/auth/register", async (req, res) => {
 
     if (error) {
       if (error.code === "23505") return res.status(409).json({ message: "This email is already registered." });
-      throw error;
+      console.error("Registration insert error:", error);
+      return res.status(500).json({ message: error.message || "Failed to create user record." });
     }
 
     try {
@@ -621,7 +628,7 @@ app.post("/api/auth/register", async (req, res) => {
     });
   } catch (err) {
     console.error("Supabase insert error:", err);
-    return res.status(500).json({ message: "Something went wrong. Please try again." });
+    return res.status(500).json({ message: err?.message || "Something went wrong. Please try again." });
   }
 });
 
