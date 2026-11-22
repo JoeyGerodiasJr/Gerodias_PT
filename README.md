@@ -57,3 +57,7 @@ supabase/
 - **Connection timeout or IPv6 error:** try a different network, then re-run `supabase link`.
 - **"Cannot connect to the Docker daemon":** you ran a Docker-only command (see the list above).
 - **Yellow `--linked` warning:** harmless. Always add `--linked` so commands target the shared project.
+
+## Web Deployment (Vercel)
+
+Import the repository in Vercel with the repository root as the project root. The root `vercel.json` routes requests to the exported Express app in `index.js`. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `APP_BASE_URL`, and `SESSION_SECRET` in Vercel's environment settings. Keep the service-role key and session secret server-side only.

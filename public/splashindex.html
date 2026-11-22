@@ -946,6 +946,8 @@
                 <h2>Set a new password</h2>
                 <p class="subtitle">Use at least 8 characters for your new account password.</p>
                 <form onsubmit="handleReset(event)">
+                    <input type="hidden" id="resetEmail">
+                    <input type="hidden" id="resetToken">
                     <div class="form-group">
                         <label>New password</label>
                         <input type="password" id="resetNewPass" placeholder="At least 8 characters" oninput="validateResetPassword()" required>
@@ -1210,21 +1212,66 @@
             }, 1200);
         }
 
-        function handleForgot(e) {
+        async function handleForgot(e) {
             e.preventDefault();
-            showAlert('Password reset link sent! Check your inbox.');
-            setTimeout(() => switchView('login', true), 1200);
+            const email = document.getElementById('forgotEmail').value.trim();
+            try {
+                const response = await fetch('/api/auth/forgotPassword', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Unable to process the password reset.');
+                showAlert(data.message || 'If an account exists, password reset instructions will be sent.');
+                setTimeout(() => switchView('login', true), 1800);
+            } catch (error) {
+                showAlert(error.message || 'Unable to process the password reset.', 'error');
+            }
         }
 
-        function handleReset(e) {
+        async function handleReset(e) {
             e.preventDefault();
             if (!validateResetPassword()) {
                 showAlert('Passwords do not match or are too short.', 'error');
                 return;
             }
-            showAlert('Password successfully updated! You can now log in.');
-            setTimeout(() => switchView('login', true), 1200);
+
+            const email = document.getElementById('resetEmail').value;
+            const token = document.getElementById('resetToken').value;
+            const newPassword = document.getElementById('resetNewPass').value;
+            try {
+                const response = await fetch('/api/auth/resetPassword', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, token, newPassword })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Unable to reset the password.');
+
+                showAlert(data.message || 'Password reset successfully. You can now log in.');
+                setTimeout(() => switchView('login', true), 1500);
+            } catch (error) {
+                showAlert(error.message || 'Unable to reset the password.', 'error');
+            }
         }
+
+        const authPath = window.location.pathname.toLowerCase().replace(/\.html$/, '');
+        const resetParams = new URLSearchParams(window.location.search);
+        if (authPath.endsWith('/resetpassword') && resetParams.has('token') && resetParams.has('email')) {
+            document.getElementById('resetEmail').value = resetParams.get('email');
+            document.getElementById('resetToken').value = resetParams.get('token');
+            openModal('reset');
+        } else if (authPath.endsWith('/login')) {
+            openModal('login');
+        } else if (authPath.endsWith('/register')) {
+            openModal('register');
+        } else if (authPath.endsWith('/forgotpassword')) {
+            openModal('forgot');
+        } else if (authPath.endsWith('/resetpassword')) {
+            openModal('reset');
+        }
+
     </script>
 
     <!-- UI upgrades: only adds visuals on top of the existing code above -->
@@ -1389,4 +1436,3 @@
     </script>
 </body>
 </html>
-
