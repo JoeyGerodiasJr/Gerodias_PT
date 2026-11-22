@@ -386,23 +386,50 @@ function isStaffRole(roleName, roleId) {
 }
 
 async function getRoleConfig() {
-  const { data: roles, error } = await supabase
-    .from('role')
-    .select('role_id, role_name');
+  const dbClient = supabaseAdmin || supabase;
+  let roles = null;
 
-  if (error || !roles) {
-    throw new Error('Failed to fetch user roles from database.');
+  try {
+    const { data, error } = await dbClient
+      .from('role')
+      .select('role_id, role_name');
+
+    if (error) {
+      console.error('getRoleConfig query error:', error);
+    } else if (Array.isArray(data) && data.length > 0) {
+      roles = data;
+    }
+  } catch (err) {
+    console.error('getRoleConfig error:', err);
+  }
+
+  // Fallback to standard seeded roles if database fetch encounters an issue
+  if (!roles || roles.length === 0) {
+    console.warn('[getRoleConfig] Using static fallback roles.');
+    return {
+      superadminRoleId: '4',
+      adminRoleId: '5',
+      defaultUserRoleId: '14',
+      rolesMap: new Map([
+        ['4', 'Superadmin'],
+        ['5', 'Administrator'],
+        ['6', 'Staff'],
+        ['13', 'System Administrator'],
+        ['14', 'User']
+      ])
+    };
   }
 
   const superadmin = roles.find(r => isSuperadminRole(r.role_name));
   const adminRole = roles.find(r => isManagerRole(r.role_name));
   const defaultUserRole = roles.find(r => String(r.role_name).trim().toLowerCase() === 'standard user')
-    || roles.find(r => String(r.role_name).trim().toLowerCase() === 'user');
+    || roles.find(r => String(r.role_name).trim().toLowerCase() === 'user')
+    || roles.find(r => isStandardUserRole(r.role_name, r.role_id));
 
   return {
-    superadminRoleId: superadmin ? String(superadmin.role_id) : null,
-    adminRoleId: adminRole ? String(adminRole.role_id) : null,
-    defaultUserRoleId: defaultUserRole ? String(defaultUserRole.role_id) : null,
+    superadminRoleId: superadmin ? String(superadmin.role_id) : '4',
+    adminRoleId: adminRole ? String(adminRole.role_id) : '5',
+    defaultUserRoleId: defaultUserRole ? String(defaultUserRole.role_id) : '14',
     rolesMap: new Map(roles.map(r => [String(r.role_id), r.role_name]))
   };
 }
