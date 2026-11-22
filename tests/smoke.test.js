@@ -8,7 +8,7 @@ const splash = fs.readFileSync(path.join(root, 'public', 'splashindex.html'), 'u
 const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 
 let passed = 0;
-const total = 9;
+const total = 10;
 
 function check(name, condition) {
   if (!condition) {
@@ -27,13 +27,12 @@ try {
 }
 
 check(
-  'auth page aliases are removed while modal APIs remain',
-  !/app\.get\(\[\s*['"]\/login['"]/.test(index)
+  'auth modals use the root splash page without legacy page aliases',
+  index.includes("app.get('/', (req, res) => res.sendFile(")
+    && !["  '/login',", "  '/register',", "  '/forgotPassword',", "  '/resetPassword',"].some(route => index.includes(route))
     && splash.includes('id="loginView"')
-    && index.includes("app.post('/api/auth/forgotPassword'")
-    && index.includes("app.post('/api/auth/resetPassword'")
-    && index.includes("app.post('/api/auth/login'")
-    && index.includes('app.post("/api/auth/register"')
+    && splash.includes("authParams.get('view') === 'reset'")
+    && index.includes('/?view=reset&token=')
 );
 
 check(
@@ -67,6 +66,13 @@ check(
   'splash password reset forms call the APIs',
   splash.includes("fetch('/api/auth/forgotPassword'")
     && splash.includes("fetch('/api/auth/resetPassword'")
+);
+
+check(
+  'obsolete first-time password setup flow is removed',
+  !index.includes("app.post('/api/auth/setPassword'")
+    && !index.includes('requireSetPassword')
+    && !splash.includes('/setPassword?email=')
 );
 
 check(

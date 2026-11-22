@@ -1134,13 +1134,7 @@
                 });
                 const data = await response.json().catch(() => ({}));
 
-                if (!response.ok) {
-                    if (data.requireSetPassword) {
-                        window.location.href = `/setPassword?email=${encodeURIComponent(email)}`;
-                        return;
-                    }
-                    throw new Error(data.message || 'Login failed.');
-                }
+                if (!response.ok) throw new Error(data.message || 'Login failed.');
 
                 window.location.href = '/dashboard';
             } catch (error) {
@@ -1256,19 +1250,10 @@
             }
         }
 
-        const authPath = window.location.pathname.toLowerCase().replace(/\.html$/, '');
-        const resetParams = new URLSearchParams(window.location.search);
-        if (authPath.endsWith('/resetpassword') && resetParams.has('token') && resetParams.has('email')) {
-            document.getElementById('resetEmail').value = resetParams.get('email');
-            document.getElementById('resetToken').value = resetParams.get('token');
-            openModal('reset');
-        } else if (authPath.endsWith('/login')) {
-            openModal('login');
-        } else if (authPath.endsWith('/register')) {
-            openModal('register');
-        } else if (authPath.endsWith('/forgotpassword')) {
-            openModal('forgot');
-        } else if (authPath.endsWith('/resetpassword')) {
+        const authParams = new URLSearchParams(window.location.search);
+        if (authParams.get('view') === 'reset' && authParams.has('token') && authParams.has('email')) {
+            document.getElementById('resetEmail').value = authParams.get('email');
+            document.getElementById('resetToken').value = authParams.get('token');
             openModal('reset');
         }
 

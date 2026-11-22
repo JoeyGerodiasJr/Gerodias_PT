@@ -449,52 +449,12 @@ app.post('/api/auth/forgotPassword', async (req, res) => {
     if (insertError) throw insertError;
 
     const baseUrl = (process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
-    const resetLink = `${baseUrl}/resetPassword?token=${token}&email=${encodeURIComponent(user.email)}`;
+    const resetLink = `${baseUrl}/?view=reset&token=${token}&email=${encodeURIComponent(user.email)}`;
     console.info(`Password reset link for ${user.email}: ${resetLink}`);
     return res.status(200).json(response);
   } catch (err) {
     console.error('Forgot password error:', err);
     return res.status(500).json({ message: 'Could not process the password reset request.' });
-  }
-});
-
-app.post('/api/auth/setPassword', async (req, res) => {
-  try {
-    const { email, newPassword } = req.body;
-    if (!email || !newPassword) {
-      return res.status(400).json({ message: 'Email and password are required.' });
-    }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
-    }
-
-    const cleanedEmail = email.trim().toLowerCase();
-    const { data: user, error: fetchError } = await supabase
-      .from('app_user')
-      .select('username, is_blocked')
-      .ilike('username', cleanedEmail)
-      .maybeSingle();
-
-    if (fetchError || !user) {
-      return res.status(400).json({ message: `Account for ${cleanedEmail} was not found.` });
-    }
-
-    if (user.is_blocked) {
-      return res.status(403).json({ message: 'This account is blocked.' });
-    }
-
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    const { error: updateError } = await supabase
-      .from('app_user')
-      .update({ password_hash: newPasswordHash })
-      .eq('username', user.username);
-
-    if (updateError) throw updateError;
-
-    return res.status(200).json({ message: 'Password updated successfully! Redirecting...' });
-  } catch (err) {
-    console.error('Set password endpoint error:', err);
-    return res.status(500).json({ message: 'Internal server error while setting password.' });
   }
 });
 
@@ -579,9 +539,8 @@ app.post('/api/auth/login', async (req, res) => {
 
     const isPendingSetup = !user.password_hash || user.password_hash === '!pending-no-password' || !user.password_hash.startsWith('$2b$');
     if (isPendingSetup) {
-      return res.status(400).json({
-        message: 'Password setup required. Please set your password first.',
-        requireSetPassword: true
+      return res.status(403).json({
+        message: 'This account has no password set. Please contact an administrator.'
       });
     }
 
