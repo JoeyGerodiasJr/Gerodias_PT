@@ -5,12 +5,15 @@ const session = require("express-session");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+const nodemailer = require("nodemailer");
 
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false }
     })
   : null;
+
+let verificationEmailTransporter = null;
 
 const app = express();
 app.use(express.json());
@@ -89,6 +92,84 @@ const ACTION_CODE_MAP = {
   can_view_employee_job_history: ['can_view_employee_job_history'],
   can_view_top_sales: ['VIEW_FIN_REPORTS', 'can_view_top_sales']
 };
+
+function hasOtpHashSecret() {
+  return typeof process.env.EMAIL_OTP_SECRET === 'string'
+    && process.env.EMAIL_OTP_SECRET.length >= 32;
+}
+
+function getSmtpPort() {
+  const port = Number(process.env.SMTP_PORT || 465);
+  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : null;
+}
+
+function hasEmailVerificationConfiguration() {
+  return Boolean(
+    supabaseAdmin
+    && hasOtpHashSecret()
+    && process.env.SMTP_HOST
+    && getSmtpPort()
+    && process.env.SMTP_USER
+    && process.env.SMTP_PASS
+  );
+}
+
+function hashEmailVerificationCode(email, code) {
+  if (!hasOtpHashSecret()) {
+    throw new Error('EMAIL_OTP_SECRET must contain at least 32 characters.');
+  }
+  return crypto.createHmac('sha256', process.env.EMAIL_OTP_SECRET)
+    .update(`${email.toLowerCase()}:${code}`)
+    .digest('hex');
+}
+
+function getVerificationEmailTransporter() {
+  if (verificationEmailTransporter) return verificationEmailTransporter;
+
+  const port = getSmtpPort();
+  if (!process.env.SMTP_HOST || !port || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS are required.');
+  }
+
+  verificationEmailTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS.replace(/\s+/g, '')
+    }
+  });
+  return verificationEmailTransporter;
+}
+
+async function sendEmailVerificationCode(email, code) {
+  await getVerificationEmailTransporter().sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: 'Your Hope, Inc. verification code',
+    text: `Your verification code is ${code}. It expires in 2 minutes.`,
+    html: `<p>Your Hope, Inc. verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px">${code}</p><p>This code expires in 2 minutes. If you did not request it, ignore this email.</p>`
+  });
+}
+
+async function issueAndSendEmailVerificationCode(userId, email) {
+  const code = String(crypto.randomInt(100000, 1000000));
+  const { data: issued, error } = await supabaseAdmin.rpc('issue_email_verification_otp', {
+    p_user_id: userId,
+    p_token_hash: hashEmailVerificationCode(email, code)
+  });
+  if (error) throw error;
+  if (!issued) return false;
+
+  try {
+    await sendEmailVerificationCode(email, code);
+  } catch (sendError) {
+    await supabaseAdmin.rpc('release_email_verification_otp', { p_user_id: userId });
+    throw sendError;
+  }
+  return true;
+}
 
 function parseGranularPermissions(value) {
   const permissions = typeof value === 'string' ? JSON.parse(value) : value;
@@ -495,7 +576,7 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const { error } = await supabase.from("app_user").insert({
+    const { data: registeredUser, error } = await supabaseAdmin.from("app_user").insert({
       username: email,
       password_hash: passwordHash,
       first_name: firstName,
@@ -504,17 +585,115 @@ app.post("/api/auth/register", async (req, res) => {
       email: email,
       role_id: defaultUserRoleId,
       status: 'pending'
-    });
+    }).select('user_id').single();
 
     if (error) {
       if (error.code === "23505") return res.status(409).json({ message: "This email is already registered." });
       throw error;
     }
 
-    res.status(201).json({ message: "Registration received. Your account is pending approval." });
+    try {
+      const sent = await issueAndSendEmailVerificationCode(registeredUser.user_id, email);
+      if (!sent) {
+        return res.status(429).json({
+          code: 'VERIFICATION_EMAIL_FAILED',
+          message: 'Your account was created, but the code could not be sent yet. Please try again shortly.'
+        });
+      }
+    } catch (emailError) {
+      console.error('Verification email delivery failed:', emailError);
+      return res.status(502).json({
+        code: 'VERIFICATION_EMAIL_FAILED',
+        message: 'Your account was created, but we could not send the verification code.'
+      });
+    }
+
+    res.status(201).json({
+      message: 'A 6-digit verification code has been sent to your email.',
+      verificationRequired: true
+    });
   } catch (err) {
     console.error("Supabase insert error:", err);
     return res.status(500).json({ message: "Something went wrong. Please try again." });
+  }
+});
+
+app.post('/api/auth/verify-otp', async (req, res) => {
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{6}$/.test(token)) {
+      return res.status(400).json({ message: 'Enter a valid email address and 6-digit code.' });
+    }
+    if (!supabaseAdmin || !hasOtpHashSecret()) {
+      return res.status(503).json({ message: 'Email verification is not configured on this server.' });
+    }
+
+    const { data: appUser, error: appUserError } = await supabaseAdmin
+      .from('app_user')
+      .select('user_id, is_deleted, status, email_verified_at')
+      .eq('email', email)
+      .eq('is_deleted', false)
+      .maybeSingle();
+    if (appUserError) throw appUserError;
+    if (!appUser || appUser.is_deleted) {
+      return res.status(400).json({ message: 'No active registration was found for this email.' });
+    }
+    if (appUser.email_verified_at) {
+      return res.status(200).json({ message: 'Email verified. You can now continue.' });
+    }
+
+    const { data: verified, error } = await supabaseAdmin.rpc('verify_email_verification_otp', {
+      p_user_id: appUser.user_id,
+      p_token_hash: hashEmailVerificationCode(email, token)
+    });
+    if (error) throw error;
+    if (!verified) {
+      return res.status(400).json({ message: 'The verification code is invalid or expired.' });
+    }
+
+    return res.status(200).json({
+      message: String(appUser.status || '').toLowerCase() === 'pending'
+        ? 'Email verified. Your account is awaiting administrator approval.'
+        : 'Email verified. You can now sign in.'
+    });
+  } catch (err) {
+    console.error('Email verification error:', err);
+    return res.status(500).json({ message: 'Could not verify the email address.' });
+  }
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Please provide a valid email address.' });
+    }
+    if (!hasEmailVerificationConfiguration()) {
+      return res.status(503).json({ message: 'Email verification is not configured on this server.' });
+    }
+
+    const { data: appUser, error } = await supabaseAdmin
+      .from('app_user')
+      .select('user_id, status, is_deleted, email_verified_at')
+      .eq('email', email)
+      .eq('is_deleted', false)
+      .maybeSingle();
+    if (error) throw error;
+
+    const response = { message: 'If an unverified registration exists for that email, a new code has been sent.' };
+    if (!appUser || appUser.is_deleted || String(appUser.status).toLowerCase() !== 'pending' || appUser.email_verified_at) {
+      return res.status(200).json(response);
+    }
+
+    const sent = await issueAndSendEmailVerificationCode(appUser.user_id, email);
+    if (!sent) {
+      return res.status(429).json({ message: 'Please wait before requesting another verification code.' });
+    }
+    return res.status(200).json(response);
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    return res.status(500).json({ message: 'Could not process the verification request.' });
   }
 });
 
@@ -527,8 +706,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     const { data: user, error: fetchError } = await supabase
       .from('app_user')
-      .select('user_id, username, password_hash, is_blocked, status')
+      .select('user_id, username, password_hash, is_blocked, status, email_verified_at')
       .eq('username', email.toLowerCase())
+      .eq('is_deleted', false)
       .maybeSingle();
 
     if (fetchError || !user) {
@@ -549,6 +729,13 @@ app.post('/api/auth/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid email or password.' });
+    }
+
+    if (String(user.status || '').toLowerCase() === 'pending' && !user.email_verified_at) {
+      return res.status(403).json({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Verify your email address before continuing.'
+      });
     }
 
     if (String(user.status || '').toLowerCase() === 'pending') {
@@ -875,13 +1062,16 @@ app.patch('/api/admin/users/:id/approve', requireAuth, async (req, res) => {
 
     const { data: targetUser } = await supabase
       .from('app_user')
-      .select('status, role_id, role (role_name)')
+      .select('status, email_verified_at, role_id, role (role_name)')
       .eq('user_id', id)
       .maybeSingle();
 
     if (!targetUser) return res.status(404).json({ message: 'User not found.' });
     if (String(targetUser.status || '').toLowerCase() !== 'pending') {
       return res.status(409).json({ message: 'Only pending users can be approved.' });
+    }
+    if (!targetUser.email_verified_at) {
+      return res.status(409).json({ message: 'This user must verify their email before approval.' });
     }
 
     if (isManagerRole(requesterRole) && !isStaffRole(targetUser?.role?.role_name, targetUser?.role_id)) {
