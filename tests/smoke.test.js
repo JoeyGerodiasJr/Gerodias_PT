@@ -84,11 +84,13 @@ const hasForgotEndpoint = indexContent.includes("app.post('/api/auth/forgotPassw
 const hasResetTable = indexContent.includes('password_reset_token') && indexContent.includes('sha256');
 const hasResetForms = splashContent.includes("fetch('/api/auth/forgotPassword'")
   && splashContent.includes("fetch('/api/auth/resetPassword'");
+const sendsResetEmail = indexContent.includes('sendPasswordResetEmail')
+  && !indexContent.includes("process.env.NODE_ENV === 'production'");
 assertTest(
   'SMK-004',
   'Password Reset Flow with SHA-256 Token Hash Alignment',
-  hasResetEndpoint && hasForgotEndpoint && hasResetTable && hasResetForms,
-  'Reset API, modal handlers, or SHA-256 password_reset_token check missing'
+  hasResetEndpoint && hasForgotEndpoint && hasResetTable && hasResetForms && sendsResetEmail,
+  'Reset API, email delivery, modal handlers, or SHA-256 password_reset_token check missing'
 );
 
 // 6. SMK-005: Dashboard page template & metric card structure

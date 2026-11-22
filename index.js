@@ -159,6 +159,21 @@ async function sendEmailVerificationCode(email, code) {
   });
 }
 
+async function sendPasswordResetEmail(email, resetLink) {
+  await getVerificationEmailTransporter().sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: 'Reset your Hope, Inc. password',
+    text: `Reset your password using this link: ${resetLink}\n\nThis link expires in 1 hour. If you did not request it, ignore this email.`,
+    html: `
+      <p>We received a request to reset your Hope, Inc. password.</p>
+      <p><a href="${resetLink}" style="display:inline-block;padding:12px 20px;background:#FC734D;color:#02070A;text-decoration:none;font-weight:bold;border-radius:6px">Reset password</a></p>
+      <p>This link expires in 1 hour.</p>
+      <p>If you did not request it, you can ignore this email.</p>
+    `
+  });
+}
+
 async function issueAndSendEmailVerificationCode(userId, email) {
   const code = String(crypto.randomInt(100000, 1000000));
   const { data: issued, error } = await supabaseAdmin.rpc('issue_email_verification_otp', {
@@ -500,7 +515,7 @@ app.post('/api/auth/forgotPassword', async (req, res) => {
     if (!supabaseAdmin) {
       return res.status(503).json({ message: 'Password reset is not configured on this server.' });
     }
-    if (process.env.NODE_ENV === 'production') {
+    if (!hasEmailVerificationConfiguration()) {
       return res.status(503).json({ message: 'Password reset email delivery is not configured.' });
     }
 
@@ -536,7 +551,7 @@ app.post('/api/auth/forgotPassword', async (req, res) => {
 
     const baseUrl = (process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     const resetLink = `${baseUrl}/?view=reset&token=${token}&email=${encodeURIComponent(user.email)}`;
-    console.info(`Password reset link for ${user.email}: ${resetLink}`);
+    await sendPasswordResetEmail(user.email, resetLink);
     return res.status(200).json(response);
   } catch (err) {
     console.error('Forgot password error:', err);
