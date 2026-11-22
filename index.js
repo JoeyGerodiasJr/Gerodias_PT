@@ -20,6 +20,7 @@ const supabaseAdmin = (process.env.SUPABASE_SERVICE_ROLE_KEY && isValidServiceKe
   : null;
 
 let verificationEmailTransporter = null;
+const pendingRegistrations = new Map();
 
 const app = express();
 app.use(express.json());
@@ -106,8 +107,8 @@ const ACTION_CODE_MAP = {
 };
 
 function hasOtpHashSecret() {
-  return typeof process.env.EMAIL_OTP_SECRET === 'string'
-    && process.env.EMAIL_OTP_SECRET.length >= 32;
+  const secret = process.env.EMAIL_OTP_SECRET || process.env.SESSION_SECRET;
+  return typeof secret === 'string' && secret.length >= 32;
 }
 
 function getSmtpPort() {
@@ -127,10 +128,11 @@ function hasEmailVerificationConfiguration() {
 }
 
 function hashEmailVerificationCode(email, code) {
-  if (!hasOtpHashSecret()) {
-    throw new Error('EMAIL_OTP_SECRET must contain at least 32 characters.');
+  const secret = process.env.EMAIL_OTP_SECRET || process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('EMAIL_OTP_SECRET or SESSION_SECRET must contain at least 32 characters.');
   }
-  return crypto.createHmac('sha256', process.env.EMAIL_OTP_SECRET)
+  return crypto.createHmac('sha256', secret)
     .update(`${email.toLowerCase()}:${code}`)
     .digest('hex');
 }
@@ -587,47 +589,71 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(500).json({ message: "The default User role is not configured." });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Check if an active user already exists with this email
     const dbClient = supabaseAdmin || supabase;
-    const { data: registeredUser, error } = await dbClient.from("app_user").insert({
-      username: email,
-      password_hash: passwordHash,
-      first_name: firstName,
-      last_name: lastName,
-      full_name: fullName,
-      email: email,
-      role_id: defaultUserRoleId,
-      status: 'pending'
-    }).select('user_id').single();
+    const { data: existingUser, error: checkError } = await dbClient
+      .from("app_user")
+      .select("user_id")
+      .eq("email", email)
+      .eq("is_deleted", false)
+      .maybeSingle();
 
-    if (error) {
-      if (error.code === "23505") return res.status(409).json({ message: "This email is already registered." });
-      console.error("Registration insert error:", error);
-      return res.status(500).json({ message: error.message || "Failed to create user record." });
+    if (checkError) {
+      console.error("User existence check error:", checkError);
+    }
+    if (existingUser) {
+      return res.status(409).json({ message: "This email is already registered." });
     }
 
-    try {
-      const sent = await issueAndSendEmailVerificationCode(registeredUser.user_id, email);
-      if (!sent) {
-        return res.status(429).json({
-          code: 'VERIFICATION_EMAIL_FAILED',
-          message: 'Your account was created, but the code could not be sent yet. Please try again shortly.'
-        });
+    const passwordHash = await bcrypt.hash(password, 10);
+    const code = String(crypto.randomInt(100000, 1000000));
+    const tokenHash = hashEmailVerificationCode(email, code);
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+
+    const pendingData = {
+      fullName,
+      firstName,
+      lastName,
+      email,
+      passwordHash,
+      defaultUserRoleId,
+      tokenHash,
+      expiresAt,
+      attempts: 0
+    };
+
+    pendingRegistrations.set(email, pendingData);
+    if (req.session) {
+      req.session.pendingRegistration = pendingData;
+    }
+
+    let emailSent = false;
+    let emailWarning = null;
+    if (hasEmailVerificationConfiguration()) {
+      try {
+        await sendEmailVerificationCode(email, code);
+        emailSent = true;
+      } catch (emailErr) {
+        console.error('SMTP email delivery error:', emailErr.message);
+        emailWarning = emailErr.message;
       }
-    } catch (emailError) {
-      console.error('Verification email delivery failed:', emailError);
-      return res.status(502).json({
-        code: 'VERIFICATION_EMAIL_FAILED',
-        message: 'Your account was created, but email delivery failed: ' + (emailError.message || 'Check SMTP credentials.')
-      });
+    } else {
+      console.warn(`[AUTH] SMTP is not fully configured. Code generated for terminal verification.`);
     }
+
+    console.log(`\n======================================================`);
+    console.log(`[VERIFICATION CODE] For: ${email}`);
+    console.log(`[VERIFICATION CODE] Code: ${code}`);
+    console.log(`======================================================\n`);
 
     res.status(201).json({
-      message: 'A 6-digit verification code has been sent to your email.',
+      message: emailSent
+        ? 'A 6-digit verification code has been sent to your email.'
+        : 'A 6-digit verification code has been generated. Check your email or terminal.',
       verificationRequired: true
     });
   } catch (err) {
-    console.error("Supabase insert error:", err);
+    console.error("Registration error:", err);
     return res.status(500).json({ message: err?.message || "Something went wrong. Please try again." });
   }
 });
@@ -639,8 +665,63 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{6}$/.test(token)) {
       return res.status(400).json({ message: 'Enter a valid email address and 6-digit code.' });
     }
+
+    // Check pending registration
+    const pending = pendingRegistrations.get(email)
+      || (req.session?.pendingRegistration?.email === email ? req.session.pendingRegistration : null);
+
+    if (pending) {
+      if (Date.now() > pending.expiresAt) {
+        pendingRegistrations.delete(email);
+        if (req.session) delete req.session.pendingRegistration;
+        return res.status(400).json({ message: 'The verification code has expired. Please register again.' });
+      }
+
+      if ((pending.attempts || 0) >= 5) {
+        pendingRegistrations.delete(email);
+        if (req.session) delete req.session.pendingRegistration;
+        return res.status(400).json({ message: 'Too many failed attempts. Please register again.' });
+      }
+
+      const inputHash = hashEmailVerificationCode(email, token);
+      if (inputHash !== pending.tokenHash) {
+        pending.attempts = (pending.attempts || 0) + 1;
+        return res.status(400).json({ message: 'The verification code is invalid.' });
+      }
+
+      // Code is verified! NOW create the account in app_user
+      const dbClient = supabaseAdmin || supabase;
+      const { data: newUser, error: insertError } = await dbClient.from("app_user").insert({
+        username: pending.email,
+        password_hash: pending.passwordHash,
+        first_name: pending.firstName,
+        last_name: pending.lastName,
+        full_name: pending.fullName,
+        email: pending.email,
+        role_id: pending.defaultUserRoleId,
+        status: 'pending',
+        email_verified_at: new Date().toISOString()
+      }).select('user_id').single();
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          return res.status(409).json({ message: "This email is already registered." });
+        }
+        console.error("Account creation insert error:", insertError);
+        return res.status(500).json({ message: insertError.message || "Failed to create user record." });
+      }
+
+      pendingRegistrations.delete(email);
+      if (req.session) delete req.session.pendingRegistration;
+
+      return res.status(200).json({
+        message: 'Email verified and account created! Your account is awaiting administrator approval.'
+      });
+    }
+
+    // Fallback for pre-existing unverified users in database
     if (!supabaseAdmin || !hasOtpHashSecret()) {
-      return res.status(503).json({ message: 'Email verification is not configured on this server.' });
+      return res.status(400).json({ message: 'No pending registration was found for this email. Please register first.' });
     }
 
     const { data: appUser, error: appUserError } = await supabaseAdmin
@@ -651,7 +732,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       .maybeSingle();
     if (appUserError) throw appUserError;
     if (!appUser || appUser.is_deleted) {
-      return res.status(400).json({ message: 'No active registration was found for this email.' });
+      return res.status(400).json({ message: 'No active registration was found for this email. Please register first.' });
     }
     if (appUser.email_verified_at) {
       return res.status(200).json({ message: 'Email verified. You can now continue.' });
@@ -683,8 +764,34 @@ app.post('/api/auth/resend-verification', async (req, res) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Please provide a valid email address.' });
     }
+
+    const pending = pendingRegistrations.get(email)
+      || (req.session?.pendingRegistration?.email === email ? req.session.pendingRegistration : null);
+
+    if (pending) {
+      const code = String(crypto.randomInt(100000, 1000000));
+      pending.tokenHash = hashEmailVerificationCode(email, code);
+      pending.expiresAt = Date.now() + 10 * 60 * 1000;
+      pending.attempts = 0;
+
+      if (hasEmailVerificationConfiguration()) {
+        try {
+          await sendEmailVerificationCode(email, code);
+        } catch (e) {
+          console.error('SMTP resend failed:', e.message);
+        }
+      }
+
+      console.log(`\n======================================================`);
+      console.log(`[RESEND VERIFICATION CODE] For: ${email}`);
+      console.log(`[RESEND VERIFICATION CODE] Code: ${code}`);
+      console.log(`======================================================\n`);
+
+      return res.status(200).json({ message: 'A new verification code has been sent.' });
+    }
+
     if (!hasEmailVerificationConfiguration()) {
-      return res.status(503).json({ message: 'Email verification is not configured on this server.' });
+      return res.status(200).json({ message: 'If an unverified registration exists for that email, a new code has been sent.' });
     }
 
     const { data: appUser, error } = await supabaseAdmin
