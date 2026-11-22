@@ -618,7 +618,7 @@ app.post("/api/auth/register", async (req, res) => {
       console.error('Verification email delivery failed:', emailError);
       return res.status(502).json({
         code: 'VERIFICATION_EMAIL_FAILED',
-        message: 'Your account was created, but we could not send the verification code.'
+        message: 'Your account was created, but email delivery failed: ' + (emailError.message || 'Check SMTP credentials.')
       });
     }
 
@@ -707,7 +707,7 @@ app.post('/api/auth/resend-verification', async (req, res) => {
     return res.status(200).json(response);
   } catch (err) {
     console.error('Resend verification error:', err);
-    return res.status(500).json({ message: 'Could not process the verification request.' });
+    return res.status(500).json({ message: 'Could not send verification code: ' + (err.message || 'Please check SMTP settings.') });
   }
 });
 
