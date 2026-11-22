@@ -440,6 +440,11 @@ async function countActiveSuperadmins(superadminRoleId) {
 // Static File Routes
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "splashindex.html")));
 app.get('/splashindex', (req, res) => res.sendFile(path.join(__dirname, "public", "splashindex.html")));
+app.get('/splashindex.html', (req, res) => {
+  const queryIndex = req.originalUrl.indexOf('?');
+  const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+  res.redirect(308, `/${query}`);
+});
 app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 app.get('/users', requireAuth, requireUserManagementAccess, (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
 

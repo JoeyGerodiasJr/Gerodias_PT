@@ -100,11 +100,19 @@ assertTest(
 const dashboardHtmlPath = path.join(ROOT_DIR, 'public', 'dashboard.html');
 const hasDashboardHtml = fs.existsSync(dashboardHtmlPath);
 const dashboardContent = hasDashboardHtml ? fs.readFileSync(dashboardHtmlPath, 'utf8') : '';
+const hasCleanLogoutRedirect = dashboardContent.includes("window.location.href = '/?logout=1'")
+  && dashboardContent.includes("fetch('/api/auth/logout'");
+const redirectsSplashHtml = indexContent.includes("app.get('/splashindex.html'")
+  && indexContent.includes("res.redirect(308, `/${query}`)");
 assertTest(
   'SMK-005',
   'Main Dashboard Template & Metric Tiles (public/dashboard.html)',
-  hasDashboardHtml && (dashboardContent.includes('metric-card') || dashboardContent.includes('card-box')) && indexContent.includes("app.get('/dashboard'"),
-  'dashboard.html missing or metric-card missing'
+  hasDashboardHtml
+    && (dashboardContent.includes('metric-card') || dashboardContent.includes('card-box'))
+    && indexContent.includes("app.get('/dashboard'")
+    && hasCleanLogoutRedirect
+    && redirectsSplashHtml,
+  'dashboard.html, metric-card, clean logout redirect, or splash index redirect missing'
 );
 
 // 7. SMK-006: Essential navigation and role badge elements
