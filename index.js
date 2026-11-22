@@ -118,9 +118,7 @@ function getSmtpPort() {
 
 function hasEmailVerificationConfiguration() {
   return Boolean(
-    supabaseAdmin
-    && hasOtpHashSecret()
-    && process.env.SMTP_HOST
+    process.env.SMTP_HOST
     && getSmtpPort()
     && process.env.SMTP_USER
     && process.env.SMTP_PASS
@@ -676,7 +674,9 @@ app.post("/api/auth/register", async (req, res) => {
     res.status(201).json({
       message: emailSent
         ? 'A 6-digit verification code has been sent to your email.'
-        : 'A 6-digit verification code has been generated. Check your email or terminal.',
+        : (emailWarning
+            ? `Code generated! (Email delivery failed: ${emailWarning})`
+            : 'A 6-digit verification code has been generated. Check your email or terminal.'),
       verificationRequired: true
     });
   } catch (err) {
