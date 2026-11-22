@@ -1467,6 +1467,25 @@ const rightsAlert = document.getElementById('rightsAlert');
 const closeRightsModalBtn = document.getElementById('closeRightsModalBtn');
 const cancelRightsBtn = document.getElementById('cancelRightsBtn');
 
+let currentUserProfile = null;
+
+function updateRoleSelectVisibility() {
+  const roleName = String(currentUserProfile?.roleName || '').toLowerCase().trim();
+  const isSuperadmin = roleName.includes('super');
+  const superadminOpt = document.querySelector('#userRoleSelect option[value="4"]');
+  if (superadminOpt) {
+    if (isSuperadmin) {
+      superadminOpt.hidden = false;
+      superadminOpt.disabled = false;
+      superadminOpt.style.display = '';
+    } else {
+      superadminOpt.hidden = true;
+      superadminOpt.disabled = true;
+      superadminOpt.style.display = 'none';
+    }
+  }
+}
+
 loadUsers();
 loadCurrentUserProfile();
 
@@ -1492,6 +1511,9 @@ async function loadCurrentUserProfile() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || 'Failed to load the current user profile.');
     if (!data.user) throw new Error('The current user profile was not returned.');
+
+    currentUserProfile = data.user;
+    updateRoleSelectVisibility();
 
     const fullName = [data.user.firstName, data.user.lastName].filter(Boolean).join(' ').trim()
       || data.user.email
@@ -1621,6 +1643,8 @@ window.openEditModal = function(id) {
   const user = usersData.find(u => String(u.id) === String(id));
   if (!user) return;
 
+  updateRoleSelectVisibility();
+
   document.getElementById('userId').value = user.id;
   document.getElementById('firstName').value = user.firstName || '';
   document.getElementById('lastName').value = user.lastName || '';
@@ -1678,6 +1702,7 @@ if (openAddModalBtn) {
     document.getElementById('userId').value = '';
     modalTitle.textContent = 'Add New User';
     modalError.textContent = '';
+    updateRoleSelectVisibility();
     userModal.classList.remove('hidden');
   });
 }

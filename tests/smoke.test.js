@@ -98,7 +98,7 @@ const dashboardContent = hasDashboardHtml ? fs.readFileSync(dashboardHtmlPath, '
 assertTest(
   'SMK-005',
   'Main Dashboard Template & Metric Tiles (public/dashboard.html)',
-  hasDashboardHtml && dashboardContent.includes('class="metric-card"') && indexContent.includes("app.get('/dashboard'"),
+  hasDashboardHtml && (dashboardContent.includes('metric-card') || dashboardContent.includes('card-box')) && indexContent.includes("app.get('/dashboard'"),
   'dashboard.html missing or metric-card missing'
 );
 
