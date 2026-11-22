@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hope, Inc. — Enterprise Database Portal</title>
+    <style>
+        :root {
+            --midnight-black: #02070A;
+            --electric-blue: #0297DE;
+            --cantaloupe-orange: #FC734D;
+            --pure-white: #FFFFFF;
+            --glass-bg: rgba(2, 7, 10, 0.68);
+            --glass-border: rgba(2, 151, 222, 0.25);
+            --glass-card-bg: rgba(2, 7, 10, 0.75);
+            --modal-bg: #02070A;
+            --modal-card-bg: rgba(4, 15, 24, 0.95);
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --danger-red: #ff5c5c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, rgba(2, 7, 10, 0.92) 0%, rgba(1, 22, 38, 0.96) 100%), 
+            url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed;
+            background-size: cover;
+            color: var(--pure-white);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Aurora Glows */
+        body::before {
+            content: '';
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: rgba(2, 151, 222, 0.15);
+            filter: blur(120px);
+            border-radius: 50%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: 10%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: rgba(252, 115, 77, 0.12);
+            filter: blur(140px);
+            border-radius: 50%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        header, .hero, .features, footer {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Floating Frosted Glass Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 40px;
+            margin: 24px 40px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-badge {
+            background-color: var(--electric-blue);
+            color: #02070A;
+            font-weight: 800;
+            font-size: 18px;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(2, 151, 222, 0.5);
+        }
+
+        .logo-text-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--pure-white);
+            letter-spacing: -0.5px;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            color: #8ef9d8;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #2ecc71;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #2ecc71;
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        /* Buttons */
+        .btn-glass-outline {
+            padding: 10px 22px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--pure-white);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid var(--glass-border);
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-glass-outline:hover {
+            background: rgba(2, 151, 222, 0.15);
+            border-color: var(--electric-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(2, 151, 222, 0.2);
+        }
+
+        .btn-solid-accent {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #02070A;
+            background-color: var(--cantaloupe-orange);
+            border: 1.5px solid var(--cantaloupe-orange);
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(252, 115, 77, 0.4);
+            transition: all 0.25s ease;
+        }
+
+        .btn-solid-accent:hover {
+            background-color: #ff8563;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(252, 115, 77, 0.6);
+        }
+
+        /* Hero Section */
+        .hero {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            align-items: center;
+            gap: 50px;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 40px;
+        }
+
+        .hero-content h1 {
+            font-size: 44px;
+            font-weight: 800;
+            line-height: 1.15;
+            color: var(--pure-white);
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .hero-content h1 span {
+            color: var(--electric-blue);
+        }
+
+        .hero-content p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+        }
+
+        /* Glassmorphism Hero Card */
+        .hero-card {
+            background: var(--glass-card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 36px;
+            color: var(--pure-white);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--glass-border);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .hero-card:hover { 
+            transform: translateY(-5px); 
+            border-color: rgba(2, 151, 222, 0.5);
+            box-shadow: 0 25px 50px rgba(2, 151, 222, 0.2);
+        }
+
+        .hero-card h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: var(--electric-blue);
+            font-weight: 700;
+        }
+
+        .hero-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        .stat-grid-mini {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+        }
+        .stat-box:hover { background: rgba(2, 151, 222, 0.1); border-color: rgba(2, 151, 222, 0.3); }
+
+        .stat-box .number {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--electric-blue);
+        }
+
+        .stat-box .label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Features Section with Frosted Glass & Hover Animation */
+        .features {
+            max-width: 1200px;
+            margin: 30px auto 40px auto;
+            padding: 0 40px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--glass-card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 26px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--cantaloupe-orange);
+            box-shadow: 0 15px 35px rgba(252, 115, 77, 0.25);
+            background: rgba(4, 15, 24, 0.85);
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(2, 151, 222, 0.15);
+            border: 1px solid rgba(2, 151, 222, 0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--electric-blue);
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--pure-white);
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* --- DARK MODE GLASS MODAL STYLES --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 7, 10, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--modal-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            color: var(--pure-white);
+            width: 100%;
+            max-width: 460px;
+            padding: 38px 40px;
+            border-radius: 22px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.7), 0 0 30px rgba(2, 151, 222, 0.15);
+            position: relative;
+            transform: translateY(20px) scale(0.98);
+            transition: transform 0.25s ease;
+            max-height: 92vh;
+            overflow-y: auto;
+            border: 1px solid rgba(2, 151, 222, 0.3);
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--pure-white);
+            border-color: var(--electric-blue);
+        }
+
+        .modal-card h2 {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            color: var(--pure-white);
+        }
+
+        .modal-card p.subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 22px;
+            line-height: 1.45;
+        }
+
+        /* Status Banner inside Modal */
+        .alert-banner {
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 20px;
+            margin-bottom: 18px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-banner.success {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: #5effa2;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            display: flex;
+        }
+
+        .alert-banner.error {
+            background-color: rgba(255, 92, 92, 0.15);
+            color: #ff8b8b;
+            border: 1px solid rgba(255, 92, 92, 0.3);
+            display: flex;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 11px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            color: var(--pure-white);
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .form-group input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--electric-blue);
+            box-shadow: 0 0 0 3px rgba(2, 151, 222, 0.25);
+        }
+
+        /* Live Password Checklist */
+        .password-checklist {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .check-item {
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .check-item .check-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .check-item.valid {
+            color: #5effa2;
+            font-weight: 500;
+        }
+
+        .check-item.valid .check-icon {
+            background-color: #2ecc71;
+            border-color: #2ecc71;
+            color: #02070A;
+        }
+
+        /* 6-Digit OTP Boxes */
+        .otp-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 24px 0 18px 0;
+        }
+
+        .otp-input {
+            width: 52px;
+            height: 58px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--pure-white);
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .otp-input:focus {
+            border-color: var(--electric-blue);
+            background: rgba(255, 255, 255, 0.09);
+            box-shadow: 0 0 0 3px rgba(2, 151, 222, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .timer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 20px;
+        }
+
+        .timer-badge {
+            font-weight: 700;
+            color: var(--electric-blue);
+            background: rgba(2, 151, 222, 0.15);
+            border: 1px solid rgba(2, 151, 222, 0.3);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .resend-btn {
+            background: none;
+            border: none;
+            color: var(--electric-blue);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .resend-btn:disabled {
+            color: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            text-decoration: none;
+        }
+
+        .modal-submit-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--cantaloupe-orange);
+            color: #02070A;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: background 0.2s, transform 0.15s;
+            box-shadow: 0 4px 15px rgba(252, 115, 77, 0.4);
+        }
+
+        .modal-submit-btn:hover {
+            background-color: #ff8563;
+            transform: translateY(-1px);
+        }
+
+        .modal-submit-btn:active {
+            transform: scale(0.99);
+        }
+
+        .modal-links-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            font-size: 13px;
+        }
+
+        .modal-links-row a, .modal-switch a {
+            color: var(--electric-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .modal-links-row a:hover, .modal-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .modal-switch {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(2, 7, 10, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        @media(max-width: 900px) {
+            .hero { grid-template-columns: 1fr; }
+            .features { grid-template-columns: 1fr; }
+            header { margin: 15px; padding: 15px 20px; }
+        }
+
+        /* Logout success message */
+        .logout-toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translate(-50%, -30px);
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            z-index: 2000;
+            background: rgba(4, 15, 24, 0.95);
+            border: 1px solid rgba(46, 204, 113, 0.4);
+            color: #5effa2;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.35s ease, opacity 0.35s ease;
+        }
+
+        .logout-toast.show {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
+
+        /* --- UI upgrades: password eye, strength bar, spinner, shake, scroll reveal --- */
+        .pw-wrap { position: relative; }
+        .pw-wrap input { padding-right: 46px; }
+        .pw-toggle {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            width: 32px; height: 32px; border: none; background: none; cursor: pointer;
+            color: rgba(255, 255, 255, 0.55); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            transition: color 0.2s, background 0.2s;
+        }
+        .pw-toggle:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
+        .pw-toggle:focus-visible { outline: 2px solid var(--electric-blue); }
+
+        .pw-strength { margin: -6px 0 16px; }
+        .pw-strength-bar { display: flex; gap: 4px; }
+        .pw-strength-bar span { flex: 1; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); transition: background 0.25s ease; }
+        .pw-strength-bar span.on.s1 { background: #ff5c5c; }
+        .pw-strength-bar span.on.s2 { background: var(--cantaloupe-orange); }
+        .pw-strength-bar span.on.s3 { background: var(--electric-blue); }
+        .pw-strength-bar span.on.s4 { background: #2ecc71; }
+        .pw-strength-label { font-size: 12px; margin-top: 6px; color: var(--text-muted); min-height: 16px; }
+
+        .btn-spinner {
+            display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px;
+            border: 2px solid rgba(2, 7, 10, 0.3); border-top-color: #02070A; border-radius: 50%;
+            animation: btnSpin 0.7s linear infinite;
+        }
+        @keyframes btnSpin { to { transform: rotate(360deg); } }
+        .modal-submit-btn:disabled { opacity: 0.85; cursor: progress; }
+
+        .modal-card.shake { animation: cardShake 0.45s ease; }
+        @keyframes cardShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(9px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(4px); }
+        }
+
+        .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.6s ease, transform 0.6s ease; transition-delay: var(--d, 0s); }
+        .reveal.in-view { opacity: 1; transform: none; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { opacity: 1; transform: none; transition: none; }
+            .modal-card.shake { animation: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Floating Header -->
+    <header>
+        <a href="#" class="logo-container">
+            <div class="logo-badge">H</div>
+            <div class="logo-text-group">
+                <span class="logo-text">Hope, Inc.</span>
+                <span class="status-badge"><span class="status-dot"></span> Supabase Connected</span>
+            </div>
+        </a>
+        <div class="nav-actions">
+            <button onclick="openModal('login')" class="btn-glass-outline">Log in</button>
+            <button onclick="openModal('register')" class="btn-solid-accent">Register</button>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Centralized Intelligence for <span>Hope, Inc.</span></h1>
+            <p>Securely manage company records, employee data, departments, payroll, and customer metrics in real-time with our robust Supabase-powered backend database portal.</p>
+            <div class="hero-buttons">
+                <button onclick="openModal('login')" class="btn-solid-accent" style="padding: 12px 26px;">Access Portal</button>
+                <button onclick="openModal('register')" class="btn-glass-outline" style="padding: 12px 26px;">Create Account</button>
+            </div>
+        </div>
+        <div class="hero-card">
+            <h3>Live Database Overview</h3>
+            <p>Real-time synchronization across modules tracking active operations, workforce data, and financial performance.</p>
+            <div class="stat-grid-mini">
+                <div class="stat-box">
+                    <div class="number">32</div>
+                    <div class="label">Employees</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number">82</div>
+                    <div class="label">Customers</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number">124</div>
+                    <div class="label">Sales</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number">165</div>
+                    <div class="label">Payments</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="feature-card">
+            <div class="feature-icon">🛡️</div>
+            <h4>Role-Based Access</h4>
+            <p>Granular permissions structure supporting Superadmin, Admin, and Staff tiers with secure authentication guards.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">👥</div>
+            <h4>Workforce Management</h4>
+            <p>Comprehensive tracking for departments, job histories, salary records, and employee directories.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📈</div>
+            <h4>Sales & Insights</h4>
+            <p>Unified data views for product catalogs, transaction logs, price histories, and payment logs.</p>
+        </div>
+    </section>
+
+    <!-- AUTHENTICATION MODAL SYSTEM (Dark Mode Glass) -->
+    <div id="authModal" class="modal-overlay" onclick="handleOutsideClick(event)">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeModal()" title="Close">✕</button>
+
+            <!-- Dynamic Alert Banner -->
+            <div id="modalAlert" class="alert-banner"></div>
+            
+            <!-- 1. LOGIN VIEW -->
+            <div id="loginView">
+                <h2>Log in</h2>
+                <p class="subtitle">Use the email and password you registered with.</p>
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" placeholder="superadmin@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="modal-submit-btn">Log in</button>
+                </form>
+                <div class="modal-links-row">
+                    <a href="#" onclick="switchView('register'); return false;">Create an account</a>
+                    <a href="#" onclick="switchView('forgot'); return false;">Forgot password?</a>
+                </div>
+            </div>
+
+            <!-- 2. REGISTER (CREATE ACCOUNT) VIEW -->
+            <div id="registerView" style="display: none;">
+                <h2>Create an account</h2>
+                <p class="subtitle">Enter your details to register for Hope, Inc. portal access.</p>
+                <form onsubmit="handleRegister(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="regFirstName" placeholder="Juan" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="regLastName" placeholder="Dela Cruz" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" placeholder="juan.delacruz@hopeinc.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="regPassword" placeholder="Create a strong password" oninput="validatePassword()" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm password</label>
+                        <input type="password" id="regConfirmPassword" placeholder="Re-enter password" oninput="validatePassword()" required>
+                    </div>
+
+                    <!-- Live Password Requirements Checklist -->
+                    <div class="password-checklist">
+                        <div class="check-item" id="chkLength">
+                            <span class="check-icon">✓</span> At least 8 characters long
+                        </div>
+                        <div class="check-item" id="chkNumber">
+                            <span class="check-icon">✓</span> Contains at least 1 number (0–9)
+                        </div>
+                        <div class="check-item" id="chkUpper">
+                            <span class="check-icon">✓</span> Contains at least 1 uppercase letter
+                        </div>
+                        <div class="check-item" id="chkMatch">
+                            <span class="check-icon">✓</span> Passwords match
+                        </div>
+                    </div>
+
+                    <button type="submit" class="modal-submit-btn">Create account</button>
+                </form>
+                <div class="modal-switch">
+                    Already registered? <a href="#" onclick="switchView('login'); return false;">Log in</a>
+                </div>
+            </div>
+
+            <!-- 3. 6-DIGIT EMAIL VERIFICATION VIEW -->
+            <div id="verifyView" style="display: none;">
+                <h2>Verify your email</h2>
+                <p class="subtitle">We sent a 6-digit verification code to <strong id="verifyEmailDisplay" style="color: var(--pure-white);">your email</strong>.</p>
+                
+                <form onsubmit="handleVerify(event)">
+                    <div class="otp-container" id="otpGroup">
+                        <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*" required>
+                        <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*" required>
+                        <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*" required>
+                        <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*" required>
+                        <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*" required>
+                        <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*" required>
+                    </div>
+
+                    <div class="timer-row">
+                        <span>Code expires in <span class="timer-badge" id="otpTimer">01:00</span></span>
+                        <button type="button" id="resendBtn" class="resend-btn" onclick="resendCode()" disabled>Resend code</button>
+                    </div>
+
+                    <button type="submit" class="modal-submit-btn">Verify & Complete Registration</button>
+                </form>
+                <div class="modal-switch">
+                    Wrong email? <a href="#" onclick="switchView('register'); return false;">Go back</a>
+                </div>
+            </div>
+
+            <!-- 4. FORGOT PASSWORD VIEW -->
+            <div id="forgotView" style="display: none;">
+                <h2>Forgot password</h2>
+                <p class="subtitle">Enter the email you registered with and we will send you a password reset link.</p>
+                <form onsubmit="handleForgot(event)">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="forgotEmail" placeholder="name@company.com" required>
+                    </div>
+                    <button type="submit" class="modal-submit-btn">Send reset link</button>
+                </form>
+                <div class="modal-links-row">
+                    <a href="#" onclick="switchView('login'); return false;">Back to log in</a>
+                    <a href="#" onclick="switchView('reset'); return false;" style="color: rgba(255,255,255,0.5); font-weight: 500;">(Preview Reset Form →)</a>
+                </div>
+            </div>
+
+            <!-- 5. SET NEW PASSWORD (RESET) VIEW -->
+            <div id="resetView" style="display: none;">
+                <h2>Set a new password</h2>
+                <p class="subtitle">Use at least 8 characters for your new account password.</p>
+                <form onsubmit="handleReset(event)">
+                    <input type="hidden" id="resetEmail">
+                    <input type="hidden" id="resetToken">
+                    <div class="form-group">
+                        <label>New password</label>
+                        <input type="password" id="resetNewPass" placeholder="At least 8 characters" oninput="validateResetPassword()" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm new password</label>
+                        <input type="password" id="resetConfirmPass" placeholder="Re-enter new password" oninput="validateResetPassword()" required>
+                    </div>
+                    <div class="password-checklist">
+                        <div class="check-item" id="resetChkLength">
+                            <span class="check-icon">✓</span> At least 8 characters long
+                        </div>
+                        <div class="check-item" id="resetChkMatch">
+                            <span class="check-icon">✓</span> Passwords match
+                        </div>
+                    </div>
+                    <button type="submit" class="modal-submit-btn">Save new password</button>
+                </form>
+                <div class="modal-switch">
+                    <a href="#" onclick="switchView('login'); return false;">Back to log in</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 Hope, Inc. All rights reserved. Powered by Supabase Enterprise Database.</p>
+    </footer>
+
+    <!-- JavaScript for Complete Auth Flow, Validation & 60s OTP Timer -->
+    <script>
+        const modal = document.getElementById('authModal');
+        const alertBox = document.getElementById('modalAlert');
+        const views = ['login', 'register', 'verify', 'forgot', 'reset'];
+        let countdownInterval = null;
+
+        function openModal(viewName) {
+            modal.classList.add('active');
+            clearAlert();
+            switchView(viewName);
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            clearInterval(countdownInterval);
+        }
+
+        function handleOutsideClick(event) {
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        function showAlert(message, type = 'success') {
+            alertBox.textContent = (type === 'success' ? '✓ ' : '⚠ ') + message;
+            alertBox.className = 'alert-banner ' + type;
+        }
+
+        function clearAlert() {
+            alertBox.className = 'alert-banner';
+            alertBox.textContent = '';
+        }
+
+        function switchView(viewName, keepAlert = false) {
+            if (!keepAlert) clearAlert();
+            views.forEach(v => {
+                document.getElementById(v + 'View').style.display = (v === viewName) ? 'block' : 'none';
+            });
+
+            if (viewName === 'verify') {
+                startOtpTimer(60);
+                setTimeout(() => document.querySelectorAll('.otp-input')[0].focus(), 100);
+            } else {
+                clearInterval(countdownInterval);
+            }
+        }
+
+        /* Live Password Validation for Registration */
+        function validatePassword() {
+            const pass = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('regConfirmPassword').value;
+
+            const hasLength = pass.length >= 8;
+            const hasNumber = /\d/.test(pass);
+            const hasUpper = /[A-Z]/.test(pass);
+            const isMatch = pass.length > 0 && pass === confirm;
+
+            toggleCheck('chkLength', hasLength);
+            toggleCheck('chkNumber', hasNumber);
+            toggleCheck('chkUpper', hasUpper);
+            toggleCheck('chkMatch', isMatch);
+
+            return hasLength && hasNumber && hasUpper && isMatch;
+        }
+
+        function validateResetPassword() {
+            const pass = document.getElementById('resetNewPass').value;
+            const confirm = document.getElementById('resetConfirmPass').value;
+
+            const hasLength = pass.length >= 8;
+            const isMatch = pass.length > 0 && pass === confirm;
+
+            toggleCheck('resetChkLength', hasLength);
+            toggleCheck('resetChkMatch', isMatch);
+
+            return hasLength && isMatch;
+        }
+
+        function toggleCheck(id, isValid) {
+            const el = document.getElementById(id);
+            if (isValid) {
+                el.classList.add('valid');
+            } else {
+                el.classList.remove('valid');
+            }
+        }
+
+        /* 6-Digit OTP Box Auto-Focus & Paste Handling */
+        const otpInputs = document.querySelectorAll('.otp-input');
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                if (e.target.value && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    otpInputs[index - 1].focus();
+                }
+            });
+
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pasteData = e.clipboardData.getData('text').trim().replace(/[^0-9]/g, '');
+                if (pasteData.length === 6) {
+                    otpInputs.forEach((inp, idx) => {
+                        inp.value = pasteData[idx];
+                    });
+                    otpInputs[5].focus();
+                }
+            });
+        });
+
+        /* 60-Second OTP Countdown Timer */
+        function startOtpTimer(durationSeconds) {
+            clearInterval(countdownInterval);
+            let timeLeft = durationSeconds;
+            const timerBadge = document.getElementById('otpTimer');
+            const resendBtn = document.getElementById('resendBtn');
+            resendBtn.disabled = true;
+
+            countdownInterval = setInterval(() => {
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+                timerBadge.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    resendBtn.disabled = false;
+                }
+                timeLeft--;
+            }, 1000);
+        }
+
+        function resendCode() {
+            startOtpTimer(60);
+            showAlert('A new verification code has been sent to your email.');
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) throw new Error(data.message || 'Login failed.');
+
+                window.location.href = '/dashboard';
+            } catch (error) {
+                console.error('Login failed:', error);
+                showAlert(error.message || 'Unable to log in. Please try again.', 'error');
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            if (!validatePassword()) {
+                showAlert('Please meet all password requirements before registering.', 'error');
+                return;
+            }
+
+            const form = e.currentTarget;
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.textContent;
+            const firstName = document.getElementById('regFirstName').value.trim();
+            const lastName = document.getElementById('regLastName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Creating account...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fullName: [firstName, lastName].filter(Boolean).join(' '),
+                        email,
+                        password,
+                        confirmPassword
+                    })
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Registration failed.');
+                }
+
+                form.reset();
+                document.getElementById('regPassword').dispatchEvent(new Event('input', { bubbles: true }));
+                document.getElementById('regConfirmPassword').dispatchEvent(new Event('input', { bubbles: true }));
+                switchView('login', true);
+                showAlert('Registration received. Your account is pending approval. You can log in after an administrator approves it.');
+            } catch (error) {
+                console.error('Registration failed:', error);
+                showAlert(error.message || 'Unable to register. Please try again.', 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
+        }
+
+        function handleVerify(e) {
+            e.preventDefault();
+            let code = '';
+            otpInputs.forEach(inp => code += inp.value);
+            if (code.length < 6) {
+                showAlert('Please enter the complete 6-digit verification code.', 'error');
+                return;
+            }
+            showAlert('Email verified successfully! Redirecting to dashboard...');
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1200);
+        }
+
+        async function handleForgot(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgotEmail').value.trim();
+            try {
+                const response = await fetch('/api/auth/forgotPassword', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Unable to process the password reset.');
+                showAlert(data.message || 'If an account exists, password reset instructions will be sent.');
+                setTimeout(() => switchView('login', true), 1800);
+            } catch (error) {
+                showAlert(error.message || 'Unable to process the password reset.', 'error');
+            }
+        }
+
+        async function handleReset(e) {
+            e.preventDefault();
+            if (!validateResetPassword()) {
+                showAlert('Passwords do not match or are too short.', 'error');
+                return;
+            }
+
+            const email = document.getElementById('resetEmail').value;
+            const token = document.getElementById('resetToken').value;
+            const newPassword = document.getElementById('resetNewPass').value;
+            try {
+                const response = await fetch('/api/auth/resetPassword', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, token, newPassword })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Unable to reset the password.');
+
+                showAlert(data.message || 'Password reset successfully. You can now log in.');
+                setTimeout(() => switchView('login', true), 1500);
+            } catch (error) {
+                showAlert(error.message || 'Unable to reset the password.', 'error');
+            }
+        }
+
+        const authParams = new URLSearchParams(window.location.search);
+        if (authParams.get('view') === 'reset' && authParams.has('token') && authParams.has('email')) {
+            document.getElementById('resetEmail').value = authParams.get('email');
+            document.getElementById('resetToken').value = authParams.get('token');
+            openModal('reset');
+        }
+    </script>
+
+    <!-- UI upgrades: only adds visuals on top of the existing code above -->
+    <script>
+        (function () {
+            const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            /* 1. Show / hide password eye on every password field */
+            const EYE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+            const EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+            document.querySelectorAll('input[type="password"]').forEach(function (input) {
+                const wrap = document.createElement('div');
+                wrap.className = 'pw-wrap';
+                input.parentNode.insertBefore(wrap, input);
+                wrap.appendChild(input);
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'pw-toggle';
+                btn.setAttribute('aria-label', 'Show password');
+                btn.innerHTML = EYE;
+                btn.addEventListener('click', function () {
+                    const show = input.type === 'password';
+                    input.type = show ? 'text' : 'password';
+                    btn.innerHTML = show ? EYE_OFF : EYE;
+                    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+                });
+                wrap.appendChild(btn);
+            });
+
+            /* 2. Password strength bar on the two "new password" fields */
+            const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+            ['regPassword', 'resetNewPass'].forEach(function (id) {
+                const input = document.getElementById(id);
+                if (!input) return;
+                const box = document.createElement('div');
+                box.className = 'pw-strength';
+                box.innerHTML = '<div class="pw-strength-bar"><span></span><span></span><span></span><span></span></div><div class="pw-strength-label"></div>';
+                input.closest('.form-group').appendChild(box);
+                const bars = box.querySelectorAll('.pw-strength-bar span');
+                const label = box.querySelector('.pw-strength-label');
+
+                input.addEventListener('input', function () {
+                    const v = input.value;
+                    let score = 0;
+                    if (v.length >= 8) score++;
+                    if (/\d/.test(v)) score++;
+                    if (/[A-Z]/.test(v)) score++;
+                    if (/[^A-Za-z0-9]/.test(v)) score++;
+                    if (v.length > 0 && v.length < 6) score = Math.min(score, 1);
+                    if (v.length === 0) score = 0;
+                    bars.forEach(function (b, i) { b.className = i < score ? 'on s' + score : ''; });
+                    label.textContent = score ? 'Password strength: ' + labels[score] : '';
+                });
+            });
+
+            /* 3. Login button spinner + shake on errors */
+            const originalShowAlert = window.showAlert;
+            window.showAlert = function (message, type) {
+                originalShowAlert(message, type);
+                if (type === 'error' && !reduceMotion) {
+                    const card = document.querySelector('.modal-card');
+                    card.classList.remove('shake');
+                    void card.offsetWidth;
+                    card.classList.add('shake');
+                    setTimeout(function () { card.classList.remove('shake'); }, 500);
+                }
+            };
+
+            const originalLogin = window.handleLogin;
+            window.handleLogin = async function (e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('.modal-submit-btn');
+                if (btn.disabled) return;
+                const original = btn.textContent;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="btn-spinner"></span>Signing in...';
+
+                try {
+                    await originalLogin(e);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = original;
+                }
+            };
+
+            /* 4. Feature cards fade up as you scroll, one after another */
+            if ('IntersectionObserver' in window && !reduceMotion) {
+                const cards = document.querySelectorAll('.feature-card');
+                cards.forEach(function (card, i) {
+                    card.classList.add('reveal');
+                    card.style.setProperty('--d', (i * 0.12) + 's');
+                });
+                const cardObserver = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (!entry.isIntersecting) return;
+                        entry.target.classList.add('in-view');
+                        cardObserver.unobserve(entry.target);
+                        // Give the hover animation back to the card once it has appeared
+                        setTimeout(function () {
+                            entry.target.classList.remove('reveal', 'in-view');
+                            entry.target.style.removeProperty('--d');
+                        }, 1200);
+                    });
+                }, { threshold: 0.15 });
+                cards.forEach(function (card) { cardObserver.observe(card); });
+            }
+
+            /* 5. Hero stats count up when they come into view */
+            const heroCard = document.querySelector('.hero-card');
+            const numbers = document.querySelectorAll('.stat-box .number');
+            if (heroCard && numbers.length && 'IntersectionObserver' in window && !reduceMotion) {
+                const targets = Array.from(numbers).map(function (n) { return parseInt(n.textContent, 10) || 0; });
+                numbers.forEach(function (n) { n.textContent = '0'; });
+                const statObserver = new IntersectionObserver(function (entries) {
+                    if (!entries[0].isIntersecting) return;
+                    statObserver.disconnect();
+                    const start = performance.now();
+                    const duration = 1300;
+                    function tick(now) {
+                        const t = Math.min((now - start) / duration, 1);
+                        const eased = 1 - Math.pow(1 - t, 3);
+                        numbers.forEach(function (n, i) { n.textContent = Math.round(targets[i] * eased); });
+                        if (t < 1) requestAnimationFrame(tick);
+                    }
+                    requestAnimationFrame(tick);
+                }, { threshold: 0.3 });
+                statObserver.observe(heroCard);
+            }
+        })();
+    </script>
+
+    <!-- Logout success message: shows when the page is opened as index.html?logout=1 -->
+    <script>
+        (function () {
+            // Show the message if the address has ?logout=1 OR the Log out button just set a flag
+            const params = new URLSearchParams(window.location.search);
+            let flagged = false;
+            try {
+                const stamp = Number(localStorage.getItem('hopeLogout') || sessionStorage.getItem('hopeLogout') || 0);
+                flagged = stamp > 0 && (Date.now() - stamp) < 60000;
+                localStorage.removeItem('hopeLogout');
+                sessionStorage.removeItem('hopeLogout');
+            } catch (err) { /* storage can be blocked, the address check still works */ }
+
+            if (params.get('logout') !== '1' && !flagged) return;
+
+            const toast = document.createElement('div');
+            toast.className = 'logout-toast';
+            toast.setAttribute('role', 'status');
+            toast.textContent = '✓ Logged out successfully';
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => toast.classList.remove('show'), 3600);
+            setTimeout(() => toast.remove(), 4200);
+
+            // Remove ?logout=1 from the address so a refresh won't show the message again
+            try { window.history.replaceState(null, '', window.location.pathname); } catch (err) { /* some browsers block this on local files */ }
+        })();
+    </script>
+</body>
+</html>

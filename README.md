@@ -78,7 +78,6 @@ Gerodias PT modernizes the operational workflows of **Hope, Inc.** by centralizi
 ### <a id="authentication-user-governance"></a>1. Authentication & User Lifecycle Governance
 - **Role Hierarchy:** Supports `Superadmin`, `Admin`, and `User` roles.
 - **Pending User Approvals:** Self-registered accounts start in `pending` status and cannot access application features until approved by a Superadmin.
-- **First-Login Password Setup:** Seeded or provisioned accounts without a personal password (`!pending-no-password`) are routed directly to an enforced password-setup screen before accessing the dashboard.
 - **Role Isolation & Superadmin Protection:** Admin users manage standard users only; Superadmin accounts remain completely hidden from standard Admins. Server-side middleware strictly prevents deleting or blocking the last remaining Superadmin.
 - **Secure Password Reset:** Uses crypto-randomized, SHA-256 hashed tokens stored in a dedicated `password_reset_token` table with single-use and expiration checks.
 
@@ -162,12 +161,18 @@ Create a `.env` file in the project root:
 PORT=3000
 SUPABASE_URL=https://ntwvaxvaxsxhecssltgh.supabase.co
 SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_server_only_service_role_key
+APP_BASE_URL=http://localhost:3000
 DATABASE_URL=your_supabase_postgres_connection_string
 SESSION_SECRET=your_secure_session_secret
 ```
 
 > [!CAUTION]
 > Never commit `.env` or sensitive database connection strings to GitHub. The `.gitignore` file is pre-configured to exclude it.
+
+Password reset token access requires `SUPABASE_SERVICE_ROLE_KEY`; keep it server-side and never expose it in browser code. In local development, the reset link is written to the server log. Production email delivery is not configured yet, so the forgot-password endpoint returns an error in production until an email provider is set up.
+
+For Vercel, `vercel.json` routes requests to the exported Express app in `index.js`. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `APP_BASE_URL`, and `SESSION_SECRET` in the Vercel project settings before deployment.
 
 ### <a id="run-the-application"></a>4. Run the Application
 ```bash

@@ -37,16 +37,22 @@ try {
 }
 
 const indexContent = fs.readFileSync(path.join(ROOT_DIR, 'index.js'), 'utf8');
+const splashContent = fs.readFileSync(path.join(ROOT_DIR, 'public', 'splashindex.html'), 'utf8');
 
-// 2. SMK-001: Login page accessibility & template structure
-const loginHtmlPath = path.join(ROOT_DIR, 'public', 'login.html');
-const hasLoginHtml = fs.existsSync(loginHtmlPath);
-const loginHtmlContent = hasLoginHtml ? fs.readFileSync(loginHtmlPath, 'utf8') : '';
+// 2. SMK-001: Auth modals are available from the shared splash page.
+const hasLegacyAuthPageAliases = [
+  "app.get('/login'",
+  "app.get('/register'",
+  "app.get('/forgotPassword'",
+  "app.get('/resetPassword'"
+].some(route => indexContent.includes(route));
 assertTest(
   'SMK-001',
-  'Login Page Assets (public/login.html & route)',
-  hasLoginHtml && loginHtmlContent.includes('id="loginForm"') && indexContent.includes("app.get('/login'"),
-  'login.html missing or missing form/route'
+  'Auth Modals on Shared Splash Page',
+  indexContent.includes("app.get('/', (req, res) => res.sendFile(")
+    && splashContent.includes('id="loginView"')
+    && !hasLegacyAuthPageAliases,
+  'Shared splash route/modal is missing or legacy page aliases remain'
 );
 
 // 3. SMK-002: Login route handler presence & credential validation
@@ -61,7 +67,10 @@ assertTest(
 
 // 4. SMK-003: Invalid credentials & blocked status rejection
 const hasBlockedCheck = indexContent.includes('user.is_blocked') && indexContent.includes('403');
-const hasPendingPasswordSetup = indexContent.includes('requireSetPassword') && indexContent.includes("startsWith('$2')");
+const hasPendingPasswordSetup = indexContent.includes('const isPendingSetup =')
+  && indexContent.includes('This account has no password set.')
+  && !indexContent.includes('requireSetPassword')
+  && !indexContent.includes("app.post('/api/auth/setPassword'");
 assertTest(
   'SMK-003',
   'Blocked User & First-Login Password Guard Verification',
@@ -73,11 +82,13 @@ assertTest(
 const hasResetEndpoint = indexContent.includes("app.post('/api/auth/resetPassword'");
 const hasForgotEndpoint = indexContent.includes("app.post('/api/auth/forgotPassword'");
 const hasResetTable = indexContent.includes('password_reset_token') && indexContent.includes('sha256');
+const hasResetForms = splashContent.includes("fetch('/api/auth/forgotPassword'")
+  && splashContent.includes("fetch('/api/auth/resetPassword'");
 assertTest(
   'SMK-004',
   'Password Reset Flow with SHA-256 Token Hash Alignment',
-  hasResetEndpoint && hasForgotEndpoint && hasResetTable,
-  'Reset endpoint, forgot password endpoint, or SHA-256 password_reset_token check missing'
+  hasResetEndpoint && hasForgotEndpoint && hasResetTable && hasResetForms,
+  'Reset API, modal handlers, or SHA-256 password_reset_token check missing'
 );
 
 // 6. SMK-005: Dashboard page template & metric card structure
@@ -87,7 +98,7 @@ const dashboardContent = hasDashboardHtml ? fs.readFileSync(dashboardHtmlPath, '
 assertTest(
   'SMK-005',
   'Main Dashboard Template & Metric Tiles (public/dashboard.html)',
-  hasDashboardHtml && dashboardContent.includes('class="metric-card"') && indexContent.includes("app.get('/dashboard'"),
+  hasDashboardHtml && (dashboardContent.includes('metric-card') || dashboardContent.includes('card-box')) && indexContent.includes("app.get('/dashboard'"),
   'dashboard.html missing or metric-card missing'
 );
 
@@ -123,6 +134,21 @@ assertTest(
   'Logout Endpoint Session Lifecycle (/api/auth/logout)',
   hasLogoutEndpoint && hasCookieClear && hasSessionDestroy,
   'Logout endpoint, cookie clear, or session destroy missing'
+);
+
+// 10. SMK-009: Vercel serves the exported Express app.
+const vercelConfigPath = path.join(ROOT_DIR, 'vercel.json');
+const vercelConfig = fs.existsSync(vercelConfigPath)
+  ? JSON.parse(fs.readFileSync(vercelConfigPath, 'utf8'))
+  : null;
+assertTest(
+  'SMK-009',
+  'Vercel Express App Configuration',
+  Boolean(vercelConfig
+    && vercelConfig.builds?.some(build => build.src === 'index.js' && build.use === '@vercel/node')
+    && vercelConfig.routes?.some(route => route.dest === 'index.js')
+    && indexContent.includes('module.exports = app;')),
+  'Vercel build/route config or Express export missing'
 );
 
 console.log('\n------------------------------------------------------');
