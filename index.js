@@ -160,7 +160,7 @@ async function sendEmailVerificationCode(email, code) {
 }
 
 async function sendPasswordResetEmail(email, resetLink) {
-  await getVerificationEmailTransporter().sendMail({
+  const info = await getVerificationEmailTransporter().sendMail({
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: email,
     subject: 'Reset your Hope, Inc. password',
@@ -171,6 +171,12 @@ async function sendPasswordResetEmail(email, resetLink) {
       <p>This link expires in 1 hour.</p>
       <p>If you did not request it, you can ignore this email.</p>
     `
+  });
+  console.info('Password reset email delivery:', {
+    accepted: info.accepted,
+    rejected: info.rejected,
+    messageId: info.messageId,
+    response: info.response
   });
 }
 
