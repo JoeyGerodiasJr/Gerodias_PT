@@ -4,6 +4,13 @@ const supabase = require("./src/config/supabaseClient");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const { createClient } = require("@supabase/supabase-js");
+
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+  : null;
 
 const app = express();
 app.use(express.json());
@@ -37,8 +44,50 @@ function requireAuth(req, res, next) {
 }
 
 const PERMISSION_MODULE_ALIASES = {
-  Customer: ['Customer', 'Customer Management'],
-  Product: ['Product', 'Product Management']
+  Customer: ['Customer', 'Customer Management', 'CUST'],
+  Product: ['Product', 'Product Management', 'INV'],
+  'Human Resources': ['Human Resources', 'HR'],
+  Sales: ['Sales'],
+  Reports: ['Reports', 'FIN']
+};
+
+const ACTION_CODE_MAP = {
+  can_add_customer: ['CREATE_CUSTOMER', 'can_add_customer'],
+  can_edit_customer: ['EDIT_CUSTOMER', 'can_edit_customer'],
+  can_delete_customer: ['DELETE_CUSTOMER', 'can_delete_customer'],
+  can_add_product: ['CREATE_PRODUCT', 'can_add_product'],
+  can_edit_product: ['EDIT_PRODUCT', 'can_edit_product'],
+  can_delete_product: ['DELETE_PRODUCT', 'can_delete_product'],
+  can_add_price: ['MANAGE_PRICING', 'can_add_price'],
+  can_edit_price: ['VIEW_PRICING', 'can_edit_price'],
+  can_delete_price: ['can_delete_price'],
+  can_add_job: ['can_add_job'],
+  can_edit_job: ['can_edit_job'],
+  can_delete_job: ['can_delete_job'],
+  can_add_department: ['MANAGE_DEPARTMENTS', 'can_add_department'],
+  can_edit_department: ['can_edit_department'],
+  can_delete_department: ['can_delete_department'],
+  can_add_employee: ['CREATE_EMPLOYEE', 'can_add_employee'],
+  can_edit_employee: ['EDIT_EMPLOYEE', 'can_edit_employee'],
+  can_delete_employee: ['DELETE_EMPLOYEE', 'can_delete_employee'],
+  can_view_job_history: ['VIEW_JOB_HISTORY', 'can_view_job_history'],
+  can_add_job_history: ['MANAGE_JOB_HISTORY', 'can_add_job_history'],
+  can_edit_job_history: ['can_edit_job_history'],
+  can_delete_job_history: ['can_delete_job_history'],
+  can_add_sale: ['CREATE_SALE', 'can_add_sale'],
+  can_edit_sale: ['EDIT_SALE', 'can_edit_sale'],
+  can_delete_sale: ['can_delete_sale'],
+  can_view_sale_details: ['VIEW_SALES', 'can_view_sale_details'],
+  can_add_sale_detail: ['can_add_sale_detail'],
+  can_edit_sale_detail: ['can_edit_sale_detail'],
+  can_delete_sale_detail: ['can_delete_sale_detail'],
+  can_view_top_customers: ['can_view_top_customers'],
+  can_view_product_master_list: ['can_view_product_master_list'],
+  can_view_top_products: ['can_view_top_products'],
+  can_view_active_employees: ['VIEW_EMPLOYEES', 'can_view_active_employees'],
+  can_view_all_employees: ['can_view_all_employees'],
+  can_view_employee_job_history: ['can_view_employee_job_history'],
+  can_view_top_sales: ['VIEW_FIN_REPORTS', 'can_view_top_sales']
 };
 
 function parseGranularPermissions(value) {
@@ -48,6 +97,101 @@ function parseGranularPermissions(value) {
     throw new Error('Invalid granular permissions data.');
   }
   return permissions;
+}
+
+function isMissingPermissionRelation(error) {
+  return ['PGRST200', 'PGRST205', '42P01'].includes(error?.code);
+}
+
+async function getUserRightsMap(userId) {
+  const moduleKeys = ['Customer', 'Product', 'Human Resources', 'Sales', 'Reports'];
+  const rightsMap = {};
+
+  moduleKeys.forEach(moduleName => {
+    rightsMap[moduleName] = {
+      module_name: moduleName,
+      enabled: false,
+      can_create: false,
+      can_read: false,
+      can_update: false,
+      can_delete: false,
+      granular_permission: {}
+    };
+  });
+
+  const { data: permissions, error: permissionError } = await supabase
+    .from('user_permission')
+    .select('right_id, is_deleted, rights (right_id, module_id, action_code, right_name, is_deleted, module (module_id, module_code, module_name, is_deleted))')
+    .eq('user_id', userId);
+
+  if (permissionError && !isMissingPermissionRelation(permissionError)) throw permissionError;
+
+  (permissions || []).forEach(permission => {
+    if (permission.is_deleted || !permission.rights || permission.rights.is_deleted) return;
+
+    const right = permission.rights;
+    const moduleName = right.module?.module_name || right.module?.module_code;
+    const actionCode = (right.action_code || right.right_name || '').trim().toLowerCase();
+    const matchedModule = moduleKeys.find(key => {
+      const aliases = PERMISSION_MODULE_ALIASES[key] || [key];
+      return aliases.some(alias => String(moduleName || '').toLowerCase().includes(alias.toLowerCase()));
+    });
+
+    if (!matchedModule) return;
+
+    rightsMap[matchedModule].enabled = true;
+    rightsMap[matchedModule].can_read = true;
+    Object.entries(ACTION_CODE_MAP).forEach(([permissionKey, codes]) => {
+      if (codes.some(code => code.toLowerCase() === actionCode) || permissionKey.toLowerCase() === actionCode) {
+        rightsMap[matchedModule].granular_permission[permissionKey] = true;
+        rightsMap[matchedModule][permissionKey] = true;
+        if (/^can_(add|create)_/.test(permissionKey)) rightsMap[matchedModule].can_create = true;
+        if (/^can_(edit|update)_/.test(permissionKey)) rightsMap[matchedModule].can_update = true;
+        if (/^can_delete_/.test(permissionKey)) rightsMap[matchedModule].can_delete = true;
+      }
+    });
+  });
+
+  const { data: legacyRights, error: legacyError } = await supabase
+    .from('user_rights')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (legacyError && !isMissingPermissionRelation(legacyError)) throw legacyError;
+
+  (legacyRights || []).forEach(row => {
+    const moduleName = moduleKeys.find(key => {
+      const aliases = PERMISSION_MODULE_ALIASES[key] || [key];
+      return aliases.some(alias => alias.toLowerCase() === String(row.module_name || '').toLowerCase());
+    }) || row.module_name;
+    const granular = parseGranularPermissions(row.granular_permission);
+    const enabled = typeof row.enabled === 'boolean' ? row.enabled : Boolean(row.can_read);
+
+    if (!rightsMap[moduleName]) {
+      rightsMap[moduleName] = {
+        module_name: moduleName,
+        enabled,
+        can_create: Boolean(row.can_create),
+        can_read: Boolean(row.can_read),
+        can_update: Boolean(row.can_update),
+        can_delete: Boolean(row.can_delete),
+        granular_permission: granular,
+        ...granular
+      };
+      return;
+    }
+
+    const current = rightsMap[moduleName];
+    current.enabled = current.enabled || enabled;
+    current.can_read = current.can_read || Boolean(row.can_read);
+    current.can_create = current.can_create || Boolean(row.can_create);
+    current.can_update = current.can_update || Boolean(row.can_update);
+    current.can_delete = current.can_delete || Boolean(row.can_delete);
+    current.granular_permission = { ...current.granular_permission, ...granular };
+    Object.assign(current, granular);
+  });
+
+  return rightsMap;
 }
 
 function checkPermission(moduleName, permissionKey) {
@@ -74,21 +218,16 @@ function checkPermission(moduleName, permissionKey) {
         return next();
       }
 
-      // 2. Query target user's rights for this specific module
-      const moduleNames = PERMISSION_MODULE_ALIASES[moduleName] || [moduleName];
-      const { data: rightsRows, error: rightsError } = await supabase
-        .from('user_rights')
-        .select('module_name, can_read, granular_permission')
-        .eq('user_id', userId)
-        .in('module_name', moduleNames);
+      const rightsMap = await getUserRightsMap(userId);
+      const normalizedModule = Object.keys(rightsMap).find(key => {
+        const aliases = PERMISSION_MODULE_ALIASES[key] || [key];
+        return aliases.some(alias => alias.toLowerCase() === moduleName.toLowerCase());
+      }) || moduleName;
+      const moduleRights = rightsMap[normalizedModule];
+      const permissionGranted = moduleRights?.granular_permission?.[permissionKey] === true
+        || moduleRights?.[permissionKey] === true;
 
-      if (rightsError) throw rightsError;
-
-      const rights = (rightsRows || []).find(row => row.module_name === moduleName)
-        || (rightsRows || []).find(row => moduleNames.includes(row.module_name));
-      const granularPermissions = parseGranularPermissions(rights?.granular_permission);
-
-      if (rights?.can_read === true && granularPermissions[permissionKey] === true) {
+      if (moduleRights && (moduleRights.can_read || moduleRights.enabled) && permissionGranted) {
         return next();
       }
 
@@ -195,50 +334,67 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, "public", "splashin
 app.get('/splashindex', (req, res) => res.sendFile(path.join(__dirname, "public", "splashindex.html")));
 app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 app.get('/users', requireAuth, requireUserManagementAccess, (req, res) => res.sendFile(path.join(__dirname, 'public', 'users.html')));
-app.get('/setPassword', (req, res) => res.sendFile(path.join(__dirname, "public", "setPassword.html")));
-app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
 
 // Auth API Endpoints
 app.post('/api/auth/resetPassword', async (req, res) => {
   try {
-    const { email, token, newPassword } = req.body;
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
     if (!email || !token || !newPassword) {
       return res.status(400).json({ message: 'Invalid or missing reset token/email.' });
     }
     if (newPassword.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     }
+    if (!supabaseAdmin) {
+      return res.status(503).json({ message: 'Password reset is not configured on this server.' });
+    }
 
-    const { data: user, error: fetchError } = await supabase
-      .from('app_user')
-      .select('user_id, reset_token, reset_token_expires, is_blocked')
-      .eq('email', email.toLowerCase())
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const { data: resetToken, error: tokenError } = await supabaseAdmin
+      .from('password_reset_token')
+      .select('token_id, user_id, expires_at, is_used, is_deleted')
+      .eq('token_hash', tokenHash)
       .maybeSingle();
 
-    if (fetchError || !user) {
+    if (tokenError) throw tokenError;
+    if (!resetToken || resetToken.is_used || resetToken.is_deleted
+      || new Date(resetToken.expires_at).getTime() <= Date.now()) {
       return res.status(400).json({ message: 'Invalid or expired password reset link.' });
     }
 
+    const { data: user, error: userError } = await supabase
+      .from('app_user')
+      .select('user_id, email, is_blocked, is_deleted')
+      .eq('user_id', resetToken.user_id)
+      .maybeSingle();
+
+    if (userError) throw userError;
+    if (!user || user.is_deleted || user.email?.toLowerCase() !== email) {
+      return res.status(400).json({ message: 'Invalid or expired password reset link.' });
+    }
     if (user.is_blocked) {
       return res.status(403).json({ message: 'This account is blocked.' });
     }
 
-    const now = new Date();
-    const tokenExpiry = new Date(user.reset_token_expires);
-    if (!user.reset_token || user.reset_token !== token || now > tokenExpiry) {
+    const { data: consumedToken, error: consumeError } = await supabaseAdmin
+      .from('password_reset_token')
+      .update({ is_used: true })
+      .eq('token_id', resetToken.token_id)
+      .eq('is_used', false)
+      .select('token_id')
+      .maybeSingle();
+    if (consumeError) throw consumeError;
+    if (!consumedToken) {
       return res.status(400).json({ message: 'Invalid or expired password reset link.' });
     }
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(newPassword, 10);
     const { error: updateError } = await supabase
       .from('app_user')
-      .update({
-        password_hash: newPasswordHash,
-        reset_token: null,
-        reset_token_expires: null
-      })
+      .update({ password_hash: passwordHash })
       .eq('user_id', user.user_id);
-
     if (updateError) throw updateError;
 
     return res.status(200).json({ message: 'Password reset successful! Redirecting to login...' });
@@ -248,43 +404,56 @@ app.post('/api/auth/resetPassword', async (req, res) => {
   }
 });
 
-app.post('/api/auth/setPassword', async (req, res) => {
+app.post('/api/auth/forgotPassword', async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
-    if (!email || !newPassword) {
-      return res.status(400).json({ message: 'Email and password are required.' });
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Please provide a valid email address.' });
     }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
+    if (!supabaseAdmin) {
+      return res.status(503).json({ message: 'Password reset is not configured on this server.' });
+    }
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ message: 'Password reset email delivery is not configured.' });
     }
 
-    const cleanedEmail = email.trim().toLowerCase();
-    const { data: user, error: fetchError } = await supabase
+    const { data: user, error: userError } = await supabase
       .from('app_user')
-      .select('username, is_blocked')
-      .ilike('username', cleanedEmail)
+      .select('user_id, email, is_blocked, is_deleted')
+      .eq('email', email)
       .maybeSingle();
+    if (userError) throw userError;
 
-    if (fetchError || !user) {
-      return res.status(400).json({ message: `Account for ${cleanedEmail} was not found.` });
+    const response = {
+      message: 'If an account exists with that email, a password reset link has been generated.'
+    };
+    if (!user || user.is_blocked || user.is_deleted) {
+      return res.status(200).json(response);
     }
 
-    if (user.is_blocked) {
-      return res.status(403).json({ message: 'This account is blocked.' });
-    }
+    const { error: invalidateError } = await supabaseAdmin
+      .from('password_reset_token')
+      .update({ is_used: true })
+      .eq('user_id', user.user_id)
+      .eq('is_used', false)
+      .eq('is_deleted', false);
+    if (invalidateError) throw invalidateError;
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    const { error: updateError } = await supabase
-      .from('app_user')
-      .update({ password_hash: newPasswordHash })
-      .eq('username', user.username);
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const { error: insertError } = await supabaseAdmin
+      .from('password_reset_token')
+      .insert({ user_id: user.user_id, token_hash: tokenHash, expires_at: expiresAt });
+    if (insertError) throw insertError;
 
-    if (updateError) throw updateError;
-
-    return res.status(200).json({ message: 'Password updated successfully! Redirecting...' });
+    const baseUrl = (process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    const resetLink = `${baseUrl}/?view=reset&token=${token}&email=${encodeURIComponent(user.email)}`;
+    console.info(`Password reset link for ${user.email}: ${resetLink}`);
+    return res.status(200).json(response);
   } catch (err) {
-    console.error('Set password endpoint error:', err);
-    return res.status(500).json({ message: 'Internal server error while setting password.' });
+    console.error('Forgot password error:', err);
+    return res.status(500).json({ message: 'Could not process the password reset request.' });
   }
 });
 
@@ -307,6 +476,9 @@ app.post("/api/auth/register", async (req, res) => {
     if (email.length > 50) return res.status(400).json({ message: "Email must be 50 characters or fewer." });
     if (fullName.length > 100) return res.status(400).json({ message: "Name is too long." });
     if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    if (!/[A-Z]/.test(password) || !/\d/.test(password)) {
+      return res.status(400).json({ message: "Password must contain an uppercase letter and a number." });
+    }
     if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match." });
 
     const nameParts = fullName.split(/\s+/);
@@ -369,9 +541,8 @@ app.post('/api/auth/login', async (req, res) => {
 
     const isPendingSetup = !user.password_hash || user.password_hash === '!pending-no-password' || !user.password_hash.startsWith('$2b$');
     if (isPendingSetup) {
-      return res.status(400).json({
-        message: 'Password setup required. Please set your password first.',
-        requireSetPassword: true
+      return res.status(403).json({
+        message: 'This account has no password set. Please contact an administrator.'
       });
     }
 
@@ -655,7 +826,7 @@ app.put('/api/admin/users/:id', requireAuth, async (req, res) => {
       .eq('user_id', id)
       .maybeSingle();
 
-    if (isManagerRole(requesterRole) && isStaffRole(targetUser?.role?.role_name)) {
+    if (isManagerRole(requesterRole) && !isStaffRole(targetUser?.role?.role_name)) {
       return res.status(403).json({ message: 'Action denied: Managers can only edit Staff accounts.' });
     }
 
@@ -835,7 +1006,7 @@ app.patch('/api/admin/users/:id/block', requireAuth, async (req, res) => {
 
     if (!targetUser) return res.status(404).json({ message: 'User not found.' });
 
-    if (isManagerRole(requesterRole) && isStaffRole(targetUser?.role?.role_name)) {
+    if (isManagerRole(requesterRole) && !isStaffRole(targetUser?.role?.role_name)) {
       return res.status(403).json({ message: 'Action denied: Managers can only block Staff accounts.' });
     }
 
@@ -1034,6 +1205,10 @@ async function verifyConnection() {
 }
 
 const PORT = process.env.PORT || 3000;
-verifyConnection().then(() => {
-  app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
-});
+if (require.main === module) {
+  verifyConnection().then(() => {
+    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+  });
+}
+
+module.exports = app;
