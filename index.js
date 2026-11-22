@@ -466,10 +466,11 @@ app.post('/api/auth/resetPassword', async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired password reset link.' });
     }
 
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseAdmin
       .from('app_user')
       .select('user_id, email, is_blocked, is_deleted')
       .eq('user_id', resetToken.user_id)
+      .limit(1)
       .maybeSingle();
 
     if (userError) throw userError;
@@ -493,7 +494,7 @@ app.post('/api/auth/resetPassword', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('app_user')
       .update({ password_hash: passwordHash })
       .eq('user_id', user.user_id);
@@ -519,10 +520,13 @@ app.post('/api/auth/forgotPassword', async (req, res) => {
       return res.status(503).json({ message: 'Password reset email delivery is not configured.' });
     }
 
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseAdmin
       .from('app_user')
       .select('user_id, email, is_blocked, is_deleted')
       .eq('email', email)
+      .limit(1)
+      .order('is_deleted', { ascending: true })
+      .order('is_blocked', { ascending: true })
       .maybeSingle();
     if (userError) throw userError;
 
