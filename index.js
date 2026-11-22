@@ -576,7 +576,8 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const { data: registeredUser, error } = await supabaseAdmin.from("app_user").insert({
+    const dbClient = supabaseAdmin || supabase;
+    const { data: registeredUser, error } = await dbClient.from("app_user").insert({
       username: email,
       password_hash: passwordHash,
       first_name: firstName,
