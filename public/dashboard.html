@@ -326,11 +326,14 @@
             align-items: center;
             gap: 14px;
             padding: 10px 13px;
+            width: 100%;
+            border: 0;
             border-radius: 10px;
             color: #ff8b8b;
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
+            cursor: pointer;
             background: rgba(255, 92, 92, 0.08);
             transition: background 0.2s;
         }
@@ -821,10 +824,10 @@
                     <div class="user-role" id="sidebarUserRole">User</div>
                 </div>
             </div>
-            <a href="splashindex.html?logout=1" class="logout-btn">
+            <button id="logoutBtn" type="button" class="logout-btn">
                 <span class="icon">🚪</span>
                 <span class="nav-label">Log out</span>
-            </a>
+            </button>
         </div>
     </sidebar>
 
@@ -1037,16 +1040,26 @@
             badge.style.transform = 'scale(0.5)';
         }
     </script>
-    <!-- Log out: tells the splash page to show "Logged out successfully" -->
+    <!-- Log out: clears the server session and returns to the splash page -->
     <script>
     (function () {
       const btn = document.querySelector('.logout-btn');
       if (!btn) return;
-      btn.addEventListener('click', function () {
+      btn.addEventListener('click', async function () {
+        btn.disabled = true;
         try {
-          localStorage.setItem('hopeLogout', String(Date.now()));
-          sessionStorage.setItem('hopeLogout', String(Date.now()));
-        } catch (err) { /* the ?logout=1 in the link still works */ }
+          const response = await fetch('/api/auth/logout', { method: 'POST' });
+          if (!response.ok) throw new Error('Could not log out.');
+          try {
+            localStorage.setItem('hopeLogout', String(Date.now()));
+            sessionStorage.setItem('hopeLogout', String(Date.now()));
+          } catch (err) { /* storage is optional */ }
+          window.location.href = '/?logout=1';
+        } catch (error) {
+          console.error('Logout failed:', error);
+          alert(error.message || 'Could not log out.');
+          btn.disabled = false;
+        }
       });
     })();
     </script>

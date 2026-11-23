@@ -30,6 +30,12 @@ if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET must be set.");
 }
 
+app.get('/splashindex.html', (req, res) => {
+  const queryIndex = req.originalUrl.indexOf('?');
+  const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+  res.redirect(308, `/${query}`);
+});
+
 // Log incoming requests to terminal for debugging
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.url}`);
@@ -162,6 +168,27 @@ async function sendEmailVerificationCode(email, code) {
     subject: 'Your Hope, Inc. verification code',
     text: `Your verification code is ${code}. It expires in 2 minutes.`,
     html: `<p>Your Hope, Inc. verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px">${code}</p><p>This code expires in 2 minutes. If you did not request it, ignore this email.</p>`
+  });
+}
+
+async function sendPasswordResetEmail(email, resetLink) {
+  const info = await getVerificationEmailTransporter().sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: 'Reset your Hope, Inc. password',
+    text: `Reset your password using this link: ${resetLink}\n\nThis link expires in 1 hour. If you did not request it, ignore this email.`,
+    html: `
+      <p>We received a request to reset your Hope, Inc. password.</p>
+      <p><a href="${resetLink}" style="display:inline-block;padding:12px 20px;background:#FC734D;color:#02070A;text-decoration:none;font-weight:bold;border-radius:6px">Reset password</a></p>
+      <p>This link expires in 1 hour.</p>
+      <p>If you did not request it, you can ignore this email.</p>
+    `
+  });
+  console.info('Password reset email delivery:', {
+    accepted: info.accepted,
+    rejected: info.rejected,
+    messageId: info.messageId,
+    response: info.response
   });
 }
 
@@ -484,10 +511,11 @@ app.post('/api/auth/resetPassword', async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired password reset link.' });
     }
 
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseAdmin
       .from('app_user')
       .select('user_id, email, is_blocked, is_deleted')
       .eq('user_id', resetToken.user_id)
+      .limit(1)
       .maybeSingle();
 
     if (userError) throw userError;
@@ -511,7 +539,7 @@ app.post('/api/auth/resetPassword', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('app_user')
       .update({ password_hash: passwordHash })
       .eq('user_id', user.user_id);
@@ -533,14 +561,17 @@ app.post('/api/auth/forgotPassword', async (req, res) => {
     if (!supabaseAdmin) {
       return res.status(503).json({ message: 'Password reset is not configured on this server.' });
     }
-    if (process.env.NODE_ENV === 'production') {
+    if (!hasEmailVerificationConfiguration()) {
       return res.status(503).json({ message: 'Password reset email delivery is not configured.' });
     }
 
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseAdmin
       .from('app_user')
       .select('user_id, email, is_blocked, is_deleted')
       .eq('email', email)
+      .limit(1)
+      .order('is_deleted', { ascending: true })
+      .order('is_blocked', { ascending: true })
       .maybeSingle();
     if (userError) throw userError;
 
@@ -569,7 +600,7 @@ app.post('/api/auth/forgotPassword', async (req, res) => {
 
     const baseUrl = (process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     const resetLink = `${baseUrl}/?view=reset&token=${token}&email=${encodeURIComponent(user.email)}`;
-    console.info(`Password reset link for ${user.email}: ${resetLink}`);
+    await sendPasswordResetEmail(user.email, resetLink);
     return res.status(200).json(response);
   } catch (err) {
     console.error('Forgot password error:', err);

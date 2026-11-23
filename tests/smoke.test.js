@@ -84,22 +84,35 @@ const hasForgotEndpoint = indexContent.includes("app.post('/api/auth/forgotPassw
 const hasResetTable = indexContent.includes('password_reset_token') && indexContent.includes('sha256');
 const hasResetForms = splashContent.includes("fetch('/api/auth/forgotPassword'")
   && splashContent.includes("fetch('/api/auth/resetPassword'");
+const sendsResetEmail = indexContent.includes('sendPasswordResetEmail')
+  && !indexContent.includes("process.env.NODE_ENV === 'production'");
+const handlesDuplicateResetAccounts = indexContent.includes(".limit(1)")
+  && indexContent.includes(".eq('email', email)")
+  && indexContent.includes('await supabaseAdmin')
 assertTest(
   'SMK-004',
   'Password Reset Flow with SHA-256 Token Hash Alignment',
-  hasResetEndpoint && hasForgotEndpoint && hasResetTable && hasResetForms,
-  'Reset API, modal handlers, or SHA-256 password_reset_token check missing'
+  hasResetEndpoint && hasForgotEndpoint && hasResetTable && hasResetForms && sendsResetEmail && handlesDuplicateResetAccounts,
+  'Reset API, duplicate account handling, email delivery, modal handlers, or SHA-256 password_reset_token check missing'
 );
 
 // 6. SMK-005: Dashboard page template & metric card structure
 const dashboardHtmlPath = path.join(ROOT_DIR, 'public', 'dashboard.html');
 const hasDashboardHtml = fs.existsSync(dashboardHtmlPath);
 const dashboardContent = hasDashboardHtml ? fs.readFileSync(dashboardHtmlPath, 'utf8') : '';
+const hasCleanLogoutRedirect = dashboardContent.includes("window.location.href = '/?logout=1'")
+  && dashboardContent.includes("fetch('/api/auth/logout'");
+const redirectsSplashHtml = indexContent.includes("app.get('/splashindex.html'")
+  && indexContent.includes("res.redirect(308, `/${query}`)");
 assertTest(
   'SMK-005',
   'Main Dashboard Template & Metric Tiles (public/dashboard.html)',
-  hasDashboardHtml && (dashboardContent.includes('metric-card') || dashboardContent.includes('card-box')) && indexContent.includes("app.get('/dashboard'"),
-  'dashboard.html missing or metric-card missing'
+  hasDashboardHtml
+    && (dashboardContent.includes('metric-card') || dashboardContent.includes('card-box'))
+    && indexContent.includes("app.get('/dashboard'")
+    && hasCleanLogoutRedirect
+    && redirectsSplashHtml,
+  'dashboard.html, metric-card, clean logout redirect, or splash index redirect missing'
 );
 
 // 7. SMK-006: Essential navigation and role badge elements
